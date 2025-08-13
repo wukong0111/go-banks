@@ -1,7 +1,7 @@
 # Bank Service Makefile
 # Commands to manage the bank service development environment
 
-.PHONY: help clean build test format format-check dev run
+.PHONY: help clean build test format format-check dev run lint lint-fix
 .DEFAULT_GOAL := help
 
 # Using standard compose.yml file
@@ -15,6 +15,16 @@ build: ## Build the application
 
 run: build ## Run the built application
 	./bin/api
+
+# Code Quality Commands
+lint: ## Run golangci-lint to check code quality
+	golangci-lint run
+
+lint-fix: ## Run golangci-lint with auto-fix
+	golangci-lint run --fix
+
+format: ## Format code with goimports
+	goimports -w .
 
 # Help command
 help: ## Show this help message

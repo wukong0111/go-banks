@@ -2,8 +2,9 @@ package database
 
 import (
 	"github.com/golang-migrate/migrate/v4"
-	_ "github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres" // PostgreSQL driver for migrations
+	_ "github.com/golang-migrate/migrate/v4/source/file"       // File source driver for migrations
+
 	"github.com/wukong0111/go-banks/internal/config"
 )
 

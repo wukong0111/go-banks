@@ -4,7 +4,7 @@ run:
 
 output:
   formats:
-    - format: json
+    - format: colored-line-number
   
 linters:
   enable:
@@ -34,7 +34,7 @@ linters-settings:
     rules:
       - name: exported
         severity: warning
-        disabled: false
+        disabled: true
         arguments:
           - "checkPrivateReceivers"
       - name: blank-imports

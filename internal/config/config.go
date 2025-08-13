@@ -7,9 +7,9 @@ import (
 )
 
 type Config struct {
-	Port     int              `json:"port"`
-	Database *DatabaseConfig  `json:"database"`
-	JWT      *JWTConfig       `json:"jwt"`
+	Port     int             `json:"port"`
+	Database *DatabaseConfig `json:"database"`
+	JWT      *JWTConfig      `json:"jwt"`
 }
 
 type DatabaseConfig struct {

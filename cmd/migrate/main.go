@@ -76,7 +76,11 @@ func runUp(cfg *config.DatabaseConfig) error {
 	if err != nil {
 		return err
 	}
-	defer ms.Close()
+	defer func() {
+		if closeErr := ms.Close(); closeErr != nil {
+			log.Printf("Warning: failed to close migration service: %v", closeErr)
+		}
+	}()
 
 	return ms.Up()
 }
@@ -86,7 +90,11 @@ func runDown(cfg *config.DatabaseConfig) error {
 	if err != nil {
 		return err
 	}
-	defer ms.Close()
+	defer func() {
+		if closeErr := ms.Close(); closeErr != nil {
+			log.Printf("Warning: failed to close migration service: %v", closeErr)
+		}
+	}()
 
 	return ms.Down()
 }
@@ -96,7 +104,11 @@ func runSteps(cfg *config.DatabaseConfig, n int) error {
 	if err != nil {
 		return err
 	}
-	defer ms.Close()
+	defer func() {
+		if closeErr := ms.Close(); closeErr != nil {
+			log.Printf("Warning: failed to close migration service: %v", closeErr)
+		}
+	}()
 
 	return ms.Steps(n)
 }
@@ -106,7 +118,11 @@ func showVersion(cfg *config.DatabaseConfig) error {
 	if err != nil {
 		return err
 	}
-	defer ms.Close()
+	defer func() {
+		if closeErr := ms.Close(); closeErr != nil {
+			log.Printf("Warning: failed to close migration service: %v", closeErr)
+		}
+	}()
 
 	version, dirty, err := ms.Version()
 	if err != nil {
@@ -131,7 +147,11 @@ func showStatus(cfg *config.DatabaseConfig) error {
 	if err != nil {
 		return err
 	}
-	defer ms.Close()
+	defer func() {
+		if closeErr := ms.Close(); closeErr != nil {
+			log.Printf("Warning: failed to close migration service: %v", closeErr)
+		}
+	}()
 
 	version, dirty, err := ms.Version()
 	if err != nil {

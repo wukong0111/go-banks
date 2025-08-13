@@ -10,8 +10,9 @@ import (
 	"sort"
 	"strings"
 
+	_ "github.com/jackc/pgx/v5/stdlib" // PostgreSQL driver for database/sql
+
 	"github.com/wukong0111/go-banks/internal/config"
-	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 func main() {
@@ -64,7 +65,11 @@ func runSeeders(ctx context.Context, cfg *config.DatabaseConfig, debug bool) err
 	if err != nil {
 		return fmt.Errorf("failed to open database connection: %w", err)
 	}
-	defer db.Close()
+	defer func() {
+		if closeErr := db.Close(); closeErr != nil {
+			log.Printf("Warning: failed to close database connection: %v", closeErr)
+		}
+	}()
 
 	// Verify database connection
 	if err := db.PingContext(ctx); err != nil {
@@ -98,7 +103,11 @@ func resetAndSeed(ctx context.Context, cfg *config.DatabaseConfig) error {
 	if err != nil {
 		return fmt.Errorf("failed to open database connection: %w", err)
 	}
-	defer db.Close()
+	defer func() {
+		if closeErr := db.Close(); closeErr != nil {
+			log.Printf("Warning: failed to close database connection: %v", closeErr)
+		}
+	}()
 
 	// Verify database connection
 	if err := db.PingContext(ctx); err != nil {
@@ -134,7 +143,11 @@ func showStatus(ctx context.Context, cfg *config.DatabaseConfig) error {
 	if err != nil {
 		return fmt.Errorf("failed to open database connection: %w", err)
 	}
-	defer db.Close()
+	defer func() {
+		if closeErr := db.Close(); closeErr != nil {
+			log.Printf("Warning: failed to close database connection: %v", closeErr)
+		}
+	}()
 
 	fmt.Println("📊 Seeder Status:")
 	fmt.Printf("  Database: %s\n", cfg.Name)
@@ -145,6 +158,7 @@ func showStatus(ctx context.Context, cfg *config.DatabaseConfig) error {
 
 	for _, table := range tables {
 		var count int
+		// #nosec G201 - table names are hardcoded, no injection risk
 		query := fmt.Sprintf("SELECT COUNT(*) FROM %s", table)
 		if err := db.QueryRowContext(ctx, query).Scan(&count); err != nil {
 			return fmt.Errorf("failed to count records in %s: %w", table, err)
@@ -194,6 +208,7 @@ func getSeederFiles() ([]string, error) {
 }
 
 func executeSQLFile(ctx context.Context, db *sql.DB, filePath string, debug bool) error {
+	// #nosec G304 - filePath comes from controlled seeder directory
 	content, err := os.ReadFile(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to read file %s: %w", filePath, err)

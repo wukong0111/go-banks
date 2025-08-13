@@ -1,0 +1,1205 @@
+openapi: 3.0.3
+info:
+  title: Bank Service API
+  description: |
+    API de servicios bancarios.
+    
+    Proporciona endpoints de solo lectura y escritura para datos de bancos y grupos bancarios 
+    con configuraciones específicas por ambiente. Utiliza esquema de migración PostgreSQL 
+    existente e implementa prácticas de desarrollo modernas.
+    
+    ## Autenticación
+    La API utiliza autenticación JWT con claims específicos de servicio. Todos los endpoints 
+    (excepto health checks) requieren un token JWT válido con los permisos apropiados.
+    
+    ## Permisos
+    - `banks:read` - Lectura de datos de bancos, grupos bancarios y filtros
+    - `banks:write` - Creación y actualización de bancos
+    
+    ## Ambientes Soportados
+    - `production` - Ambiente de producción
+    - `test` - Ambiente de pruebas
+    - `sandbox` - Ambiente de desarrollo
+    - `development` - Ambiente local
+  version: 1.0.0
+  contact:
+    name: Bank Service API Support
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:3000
+    description: Servidor de desarrollo local
+  - url: https://api.banks.example.com
+    description: Servidor de producción
+
+security:
+  - JWTAuth: []
+
+paths:
+  /health:
+    get:
+      summary: Health Check Básico
+      description: Verifica el estado de salud de la aplicación y conexión a base de datos
+      tags:
+        - Health
+      security: []
+      responses:
+        '200':
+          description: Servicio saludable
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "healthy"
+                  timestamp:
+                    type: string
+                    format: date-time
+                  version:
+                    type: string
+                    example: "1.0.0"
+                  environment:
+                    type: string
+                    example: "development"
+        '503':
+          description: Servicio no disponible
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "unhealthy"
+                  timestamp:
+                    type: string
+                    format: date-time
+                  error:
+                    type: string
+                    example: "Database connection failed"
+
+  /health/jwt:
+    get:
+      summary: Health Check JWT
+      description: Verifica el estado de salud del sistema de autenticación JWT
+      tags:
+        - Health
+      security: []
+      responses:
+        '200':
+          description: Sistema JWT saludable
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jwt:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        example: "healthy"
+                      secretProvider:
+                        type: string
+                        example: "AWSSecretsProvider"
+                  service:
+                    type: string
+                    example: "healthy"
+                  timestamp:
+                    type: string
+                    format: date-time
+        '503':
+          description: Sistema JWT no disponible
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jwt:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        example: "unhealthy"
+                      error:
+                        type: string
+                  service:
+                    type: string
+                    example: "failed"
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /api/banks:
+    get:
+      summary: Obtener Lista de Bancos
+      description: |
+        Obtiene una lista paginada de bancos con filtros opcionales.
+        Requiere permiso `banks:read`.
+      tags:
+        - Banks
+      parameters:
+        - name: env
+          in: query
+          description: Filtrar por ambiente específico o "all" para todos
+          schema:
+            type: string
+            enum: [production, test, sandbox, development, all]
+            default: all
+        - name: name
+          in: query
+          description: Filtrar por nombre del banco (búsqueda parcial)
+          schema:
+            type: string
+        - name: api
+          in: query
+          description: Filtrar por tipo de API
+          schema:
+            type: string
+        - name: country
+          in: query
+          description: Filtrar por país (código ISO)
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Número de página (basado en 1)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Número de elementos por página
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Lista de bancos obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Bank'
+                      pagination:
+                        $ref: '#/components/schemas/Pagination'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      summary: Crear Nuevo Banco
+      description: |
+        Crea un nuevo banco con configuraciones de ambiente.
+        Requiere permiso `banks:write`.
+      tags:
+        - Banks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBankRequest'
+            examples:
+              withEnvironments:
+                summary: Con array de ambientes
+                value:
+                  bank_id: "santander_es"
+                  name: "Banco Santander España"
+                  bank_codes: ["0049"]
+                  api: "berlin_group"
+                  api_version: "1.3.6"
+                  aspsp: "santander"
+                  country: "ES"
+                  auth_type_choice_required: true
+                  bic: "BSCHESMM"
+                  environments: ["production", "test"]
+                  configuration:
+                    enabled: 1
+                    blocked: false
+                    risky: false
+                    app_auth_setup_required: false
+              withConfigurations:
+                summary: Con configuraciones específicas
+                value:
+                  bank_id: "bbva_es"
+                  name: "BBVA España"
+                  bank_codes: ["0182"]
+                  api: "berlin_group"
+                  api_version: "1.3.6"
+                  aspsp: "bbva"
+                  country: "ES"
+                  auth_type_choice_required: false
+                  configurations:
+                    production:
+                      enabled: 1
+                      blocked: false
+                      risky: false
+                      app_auth_setup_required: true
+                    test:
+                      enabled: 1
+                      blocked: false
+                      risky: true
+                      app_auth_setup_required: false
+      responses:
+        '201':
+          description: Banco creado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateBankResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: El banco ya existe
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                        example: "Bank with ID 'santander_es' already exists"
+
+  /api/banks/{bankId}/details:
+    get:
+      summary: Obtener Detalles de Banco
+      description: |
+        Obtiene los detalles completos de un banco específico incluyendo 
+        todas sus configuraciones de ambiente. Requiere permiso `banks:read`.
+      tags:
+        - Banks
+      parameters:
+        - name: bankId
+          in: path
+          required: true
+          description: ID único del banco
+          schema:
+            type: string
+            example: "santander_es"
+      responses:
+        '200':
+          description: Detalles del banco obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/BankWithEnvironments'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Banco no encontrado
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                        example: "Bank not found"
+
+  /api/banks/{bankId}:
+    put:
+      summary: Actualizar Banco
+      description: |
+        Actualiza un banco existente y sus configuraciones de ambiente.
+        Requiere permiso `banks:write`.
+      tags:
+        - Banks
+      parameters:
+        - name: bankId
+          in: path
+          required: true
+          description: ID único del banco a actualizar
+          schema:
+            type: string
+            example: "santander_es"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBankRequest'
+      responses:
+        '200':
+          description: Banco actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateBankResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Banco no encontrado
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                        example: "Bank not found"
+
+  /api/bank-groups:
+    get:
+      summary: Obtener Lista de Grupos Bancarios
+      description: |
+        Obtiene una lista de todos los grupos bancarios disponibles.
+        Requiere permiso `banks:read`.
+      tags:
+        - Bank Groups
+      responses:
+        '200':
+          description: Lista de grupos bancarios obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/BankGroup'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/bank-groups/{groupId}:
+    get:
+      summary: Obtener Detalles de Grupo Bancario
+      description: |
+        Obtiene los detalles de un grupo bancario específico.
+        Requiere permiso `banks:read`.
+      tags:
+        - Bank Groups
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          description: ID único del grupo bancario
+          schema:
+            type: string
+            example: "santander_group"
+      responses:
+        '200':
+          description: Detalles del grupo bancario obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/BankGroup'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Grupo bancario no encontrado
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                        example: "Bank group not found"
+
+  /api/filters:
+    get:
+      summary: Obtener Filtros de Bancos
+      description: |
+        Obtiene los filtros disponibles para bancos (países, APIs, etc.).
+        Requiere permiso `banks:read`.
+      tags:
+        - Filters
+      responses:
+        '200':
+          description: Filtros obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/BankFilters'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+components:
+  securitySchemes:
+    JWTAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Token JWT con claims de servicio. Estructura de claims:
+        ```json
+        {
+          "iss": "service-identifier",
+          "sub": "service-auth",
+          "exp": 1234567890,
+          "service_type": "internal",
+          "permissions": ["banks:read", "banks:write"],
+          "environment": "production"
+        }
+        ```
+
+  schemas:
+    ApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Indica si la operación fue exitosa
+        data:
+          description: Datos de la respuesta (estructura varía según endpoint)
+        error:
+          type: string
+          description: Mensaje de error (solo presente si success es false)
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+      required:
+        - success
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          description: Página actual
+        limit:
+          type: integer
+          minimum: 1
+          description: Elementos por página
+        total:
+          type: integer
+          minimum: 0
+          description: Total de elementos
+        totalPages:
+          type: integer
+          minimum: 1
+          description: Total de páginas
+      required:
+        - page
+        - limit
+        - total
+        - totalPages
+
+    Bank:
+      type: object
+      properties:
+        bank_id:
+          type: string
+          description: Identificador único del banco
+          example: "santander_es"
+        name:
+          type: string
+          description: Nombre del banco
+          example: "Banco Santander España"
+        bank_codes:
+          type: array
+          items:
+            type: string
+          description: Códigos bancarios (preserva ceros iniciales)
+          example: ["0049"]
+        api:
+          type: string
+          description: Tipo de API que utiliza el banco
+          example: "berlin_group"
+        api_version:
+          type: string
+          description: Versión de la API
+          example: "1.3.6"
+        aspsp:
+          type: string
+          description: Identificador ASPSP
+          example: "santander"
+        country:
+          type: string
+          description: Código de país ISO
+          example: "ES"
+        auth_type_choice_required:
+          type: boolean
+          description: Si requiere selección de tipo de autenticación
+        bic:
+          type: string
+          nullable: true
+          description: Código BIC del banco
+          example: "BSCHESMM"
+        real_name:
+          type: string
+          nullable: true
+          description: Nombre real del banco
+        product_code:
+          type: string
+          nullable: true
+          description: Código de producto
+        bank_group_id:
+          type: string
+          nullable: true
+          description: ID del grupo bancario al que pertenece
+        logo_url:
+          type: string
+          nullable: true
+          description: URL del logo del banco
+        documentation:
+          type: string
+          nullable: true
+          description: Documentación adicional
+        keywords:
+          type: object
+          nullable: true
+          description: Palabras clave asociadas al banco
+        attribute:
+          type: object
+          nullable: true
+          description: Atributos adicionales del banco
+      required:
+        - bank_id
+        - name
+        - bank_codes
+        - api
+        - api_version
+        - aspsp
+        - country
+        - auth_type_choice_required
+
+    BankEnvironmentConfig:
+      type: object
+      properties:
+        environment:
+          type: string
+          enum: [production, test, sandbox, development]
+          description: Ambiente de configuración
+        enabled:
+          type: integer
+          description: Estado de habilitación (0 o 1)
+          example: 1
+        blocked:
+          type: boolean
+          description: Si el banco está bloqueado
+        risky:
+          type: boolean
+          description: Si el banco es considerado riesgoso
+        app_auth_setup_required:
+          type: boolean
+          description: Si requiere configuración de autenticación de app
+        blocked_text:
+          type: string
+          nullable: true
+          description: Texto mostrado cuando está bloqueado
+        risky_message:
+          type: string
+          nullable: true
+          description: Mensaje mostrado cuando es riesgoso
+        supports_instant_payments:
+          type: boolean
+          nullable: true
+          description: Si soporta pagos instantáneos
+        instant_payments_activated:
+          type: boolean
+          nullable: true
+          description: Si los pagos instantáneos están activados
+        instant_payments_limit:
+          type: number
+          nullable: true
+          description: Límite para pagos instantáneos
+        ok_status_codes_simple_payment:
+          type: object
+          nullable: true
+          description: Códigos de estado OK para pagos simples
+        ok_status_codes_instant_payment:
+          type: object
+          nullable: true
+          description: Códigos de estado OK para pagos instantáneos
+        ok_status_codes_periodic_payment:
+          type: object
+          nullable: true
+          description: Códigos de estado OK para pagos periódicos
+        enabled_periodic_payment:
+          type: boolean
+          nullable: true
+          description: Si los pagos periódicos están habilitados
+        frequency_periodic_payment:
+          type: string
+          nullable: true
+          description: Frecuencia de pagos periódicos
+        config_periodic_payment:
+          type: string
+          nullable: true
+          description: Configuración de pagos periódicos
+      required:
+        - environment
+        - enabled
+        - blocked
+        - risky
+        - app_auth_setup_required
+
+    BankWithEnvironments:
+      allOf:
+        - $ref: '#/components/schemas/Bank'
+        - type: object
+          properties:
+            environment_configs:
+              type: array
+              items:
+                $ref: '#/components/schemas/BankEnvironmentConfig'
+              description: Configuraciones por ambiente
+
+    CreateBankRequest:
+      oneOf:
+        - $ref: '#/components/schemas/CreateBankWithEnvironmentsRequest'
+        - $ref: '#/components/schemas/CreateBankWithConfigurationsRequest'
+
+    CreateBankWithEnvironmentsRequest:
+      allOf:
+        - $ref: '#/components/schemas/CreateBankBaseRequest'
+        - type: object
+          properties:
+            environments:
+              type: array
+              items:
+                type: string
+                enum: [production, test, sandbox, development]
+              description: Lista de ambientes donde crear el banco
+            configuration:
+              $ref: '#/components/schemas/BankEnvironmentConfigRequest'
+          required:
+            - environments
+            - configuration
+
+    CreateBankWithConfigurationsRequest:
+      allOf:
+        - $ref: '#/components/schemas/CreateBankBaseRequest'
+        - type: object
+          properties:
+            configurations:
+              type: object
+              additionalProperties:
+                $ref: '#/components/schemas/BankEnvironmentConfigRequest'
+              description: Configuraciones específicas por ambiente
+          required:
+            - configurations
+
+    CreateBankBaseRequest:
+      type: object
+      properties:
+        bank_id:
+          type: string
+          description: Identificador único del banco
+        name:
+          type: string
+          description: Nombre del banco
+        bank_codes:
+          type: array
+          items:
+            type: string
+          description: Códigos bancarios
+        api:
+          type: string
+          description: Tipo de API
+        api_version:
+          type: string
+          description: Versión de la API
+        aspsp:
+          type: string
+          description: Identificador ASPSP
+        country:
+          type: string
+          description: Código de país ISO
+        auth_type_choice_required:
+          type: boolean
+          description: Si requiere selección de tipo de autenticación
+        bic:
+          type: string
+          nullable: true
+          description: Código BIC del banco
+        real_name:
+          type: string
+          nullable: true
+          description: Nombre real del banco
+        product_code:
+          type: string
+          nullable: true
+          description: Código de producto
+        bank_group_id:
+          type: string
+          nullable: true
+          description: ID del grupo bancario
+        logo_url:
+          type: string
+          nullable: true
+          description: URL del logo
+        documentation:
+          type: string
+          nullable: true
+          description: Documentación adicional
+        keywords:
+          type: object
+          nullable: true
+          description: Palabras clave
+        attribute:
+          type: object
+          nullable: true
+          description: Atributos adicionales
+      required:
+        - bank_id
+        - name
+        - bank_codes
+        - api
+        - api_version
+        - aspsp
+        - country
+        - auth_type_choice_required
+
+    BankEnvironmentConfigRequest:
+      type: object
+      properties:
+        enabled:
+          type: integer
+          enum: [0, 1]
+          description: Estado de habilitación
+        blocked:
+          type: boolean
+          description: Si el banco está bloqueado
+        risky:
+          type: boolean
+          description: Si el banco es riesgoso
+        app_auth_setup_required:
+          type: boolean
+          description: Si requiere configuración de auth
+        blocked_text:
+          type: string
+          nullable: true
+          description: Texto cuando está bloqueado
+        risky_message:
+          type: string
+          nullable: true
+          description: Mensaje cuando es riesgoso
+        supports_instant_payments:
+          type: boolean
+          nullable: true
+          description: Soporte para pagos instantáneos
+        instant_payments_activated:
+          type: boolean
+          nullable: true
+          description: Pagos instantáneos activados
+        instant_payments_limit:
+          type: number
+          nullable: true
+          description: Límite para pagos instantáneos
+        ok_status_codes_simple_payment:
+          type: object
+          nullable: true
+          description: Códigos OK para pagos simples
+        ok_status_codes_instant_payment:
+          type: object
+          nullable: true
+          description: Códigos OK para pagos instantáneos
+        ok_status_codes_periodic_payment:
+          type: object
+          nullable: true
+          description: Códigos OK para pagos periódicos
+        enabled_periodic_payment:
+          type: boolean
+          nullable: true
+          description: Pagos periódicos habilitados
+        frequency_periodic_payment:
+          type: string
+          nullable: true
+          description: Frecuencia de pagos periódicos
+        config_periodic_payment:
+          type: string
+          nullable: true
+          description: Config de pagos periódicos
+      required:
+        - enabled
+        - blocked
+        - risky
+        - app_auth_setup_required
+
+    CreateBankResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            success:
+              type: boolean
+              enum: [true]
+            data:
+              type: object
+              properties:
+                bank:
+                  $ref: '#/components/schemas/Bank'
+                environment_configs:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/BankEnvironmentConfig'
+            message:
+              type: string
+              example: "Bank created successfully"
+
+    UpdateBankRequest:
+      oneOf:
+        - $ref: '#/components/schemas/UpdateBankWithEnvironmentsRequest'
+        - $ref: '#/components/schemas/UpdateBankWithConfigurationsRequest'
+
+    UpdateBankWithEnvironmentsRequest:
+      allOf:
+        - $ref: '#/components/schemas/UpdateBankBaseRequest'
+        - type: object
+          properties:
+            environments:
+              type: array
+              items:
+                type: string
+                enum: [production, test, sandbox, development]
+            configuration:
+              $ref: '#/components/schemas/UpdateBankEnvironmentConfigRequest'
+
+    UpdateBankWithConfigurationsRequest:
+      allOf:
+        - $ref: '#/components/schemas/UpdateBankBaseRequest'
+        - type: object
+          properties:
+            configurations:
+              type: object
+              additionalProperties:
+                $ref: '#/components/schemas/UpdateBankEnvironmentConfigRequest'
+
+    UpdateBankBaseRequest:
+      type: object
+      properties:
+        bank_id:
+          type: string
+          description: Nuevo ID del banco (no recomendado cambiar)
+        name:
+          type: string
+          description: Nombre del banco
+        bank_codes:
+          type: array
+          items:
+            type: string
+          description: Códigos bancarios
+        api:
+          type: string
+          description: Tipo de API
+        api_version:
+          type: string
+          description: Versión de la API
+        aspsp:
+          type: string
+          description: Identificador ASPSP
+        country:
+          type: string
+          description: Código de país ISO
+        auth_type_choice_required:
+          type: boolean
+          description: Requiere selección de tipo de autenticación
+        bic:
+          type: string
+          nullable: true
+          description: Código BIC
+        real_name:
+          type: string
+          nullable: true
+          description: Nombre real
+        product_code:
+          type: string
+          nullable: true
+          description: Código de producto
+        bank_group_id:
+          type: string
+          nullable: true
+          description: ID del grupo bancario
+        logo_url:
+          type: string
+          nullable: true
+          description: URL del logo
+        documentation:
+          type: string
+          nullable: true
+          description: Documentación
+        keywords:
+          type: object
+          nullable: true
+          description: Palabras clave
+        attribute:
+          type: object
+          nullable: true
+          description: Atributos adicionales
+      description: Todos los campos son opcionales para actualizaciones parciales
+
+    UpdateBankEnvironmentConfigRequest:
+      type: object
+      properties:
+        enabled:
+          type: integer
+          enum: [0, 1]
+        blocked:
+          type: boolean
+        risky:
+          type: boolean
+        app_auth_setup_required:
+          type: boolean
+        blocked_text:
+          type: string
+          nullable: true
+        risky_message:
+          type: string
+          nullable: true
+        supports_instant_payments:
+          type: boolean
+          nullable: true
+        instant_payments_activated:
+          type: boolean
+          nullable: true
+        instant_payments_limit:
+          type: number
+          nullable: true
+        ok_status_codes_simple_payment:
+          type: object
+          nullable: true
+        ok_status_codes_instant_payment:
+          type: object
+          nullable: true
+        ok_status_codes_periodic_payment:
+          type: object
+          nullable: true
+        enabled_periodic_payment:
+          type: boolean
+          nullable: true
+        frequency_periodic_payment:
+          type: string
+          nullable: true
+        config_periodic_payment:
+          type: string
+          nullable: true
+      description: Todos los campos son opcionales para actualizaciones parciales
+
+    UpdateBankResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            success:
+              type: boolean
+              enum: [true]
+            data:
+              type: object
+              properties:
+                bank:
+                  $ref: '#/components/schemas/Bank'
+                environment_configs:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/BankEnvironmentConfig'
+            message:
+              type: string
+              example: "Bank updated successfully"
+
+    BankGroup:
+      type: object
+      properties:
+        group_id:
+          type: string
+          description: Identificador único del grupo
+          example: "santander_group"
+        name:
+          type: string
+          description: Nombre del grupo bancario
+          example: "Grupo Santander"
+        description:
+          type: string
+          nullable: true
+          description: Descripción del grupo
+        logo_url:
+          type: string
+          nullable: true
+          description: URL del logo del grupo
+        website:
+          type: string
+          nullable: true
+          description: Sitio web del grupo
+        created_at:
+          type: string
+          format: date-time
+          description: Fecha de creación
+        updated_at:
+          type: string
+          format: date-time
+          description: Fecha de última actualización
+      required:
+        - group_id
+        - name
+
+    BankFilters:
+      type: object
+      properties:
+        countries:
+          type: array
+          items:
+            type: object
+            properties:
+              code:
+                type: string
+                description: Código ISO del país
+                example: "ES"
+              name:
+                type: string
+                description: Nombre del país
+                example: "España"
+              count:
+                type: integer
+                description: Número de bancos en este país
+                example: 45
+          description: Lista de países disponibles
+        apis:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                description: Tipo de API
+                example: "berlin_group"
+              count:
+                type: integer
+                description: Número de bancos con esta API
+                example: 120
+          description: Lista de tipos de API disponibles
+        environments:
+          type: array
+          items:
+            type: string
+            enum: [production, test, sandbox, development]
+          description: Ambientes disponibles
+        bankGroups:
+          type: array
+          items:
+            type: object
+            properties:
+              group_id:
+                type: string
+                example: "santander_group"
+              name:
+                type: string
+                example: "Grupo Santander"
+              count:
+                type: integer
+                description: Número de bancos en este grupo
+                example: 8
+          description: Lista de grupos bancarios disponibles
+      required:
+        - countries
+        - apis
+        - environments
+
+  responses:
+    BadRequest:
+      description: Solicitud inválida - parámetros incorrectos o datos malformados
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/ApiResponse'
+              - type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [false]
+                  error:
+                    type: string
+                    example: "Invalid request parameters"
+
+    Unauthorized:
+      description: No autenticado - token JWT faltante o inválido
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/ApiResponse'
+              - type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [false]
+                  error:
+                    type: string
+                    example: "Authentication required"
+
+    Forbidden:
+      description: Sin permisos - token válido pero sin permisos suficientes
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/ApiResponse'
+              - type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [false]
+                  error:
+                    type: string
+                    example: "Insufficient permissions"
+
+tags:
+  - name: Health
+    description: Endpoints de verificación de salud del sistema
+  - name: Banks
+    description: Operaciones CRUD para bancos
+  - name: Bank Groups
+    description: Operaciones de lectura para grupos bancarios
+  - name: Filters
+    description: Filtros y metadatos para bancos
