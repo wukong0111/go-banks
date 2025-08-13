@@ -3,7 +3,7 @@ CREATE TYPE environment_type AS ENUM ('sandbox', 'production', 'uat', 'test');
 CREATE TABLE bank_environment_configs (
     bank_id VARCHAR(255) NOT NULL REFERENCES banks(bank_id) ON UPDATE CASCADE,
     environment environment_type NOT NULL,
-    enabled SMALLINT NOT NULL DEFAULT 1,
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
     blocked BOOLEAN NOT NULL DEFAULT FALSE,
     blocked_text TEXT,
     risky BOOLEAN NOT NULL DEFAULT FALSE,
