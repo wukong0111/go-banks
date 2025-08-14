@@ -34,7 +34,7 @@ func main() {
 	}
 
 	// Initialize dependencies
-	bankRepo := repository.NewBankRepository(dbPool)
+	bankRepo := repository.NewPostgresBankRepository(dbPool)
 	bankService := services.NewBankService(bankRepo)
 	bankHandler := handlers.NewBankHandler(bankService)
 

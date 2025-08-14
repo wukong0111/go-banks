@@ -23,25 +23,45 @@ func NewBankHandler(bankService *services.BankService) *BankHandler {
 }
 
 func (h *BankHandler) GetBanks(c *gin.Context) {
-	// Parse query parameters
+	// Parse query parameters - no defaults or validation, just HTTP parsing
 	filters := repository.BankFilters{
-		Environment: c.DefaultQuery("env", "all"),
+		Environment: c.Query("env"),
 		Name:        c.Query("name"),
 		API:         c.Query("api"),
 		Country:     c.Query("country"),
 	}
 
-	// Parse pagination parameters
-	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
-	if err != nil || page < 1 {
-		page = 1
-	}
-	filters.Page = page
+	// Parse and validate pagination parameters
+	var page, limit int
+	var err error
 
-	limit, err := strconv.Atoi(c.DefaultQuery("limit", "20"))
-	if err != nil || limit < 1 || limit > 100 {
-		limit = 20
+	// Validate page parameter if provided
+	if pageStr, exists := c.GetQuery("page"); exists {
+		page, err = strconv.Atoi(pageStr)
+		if err != nil {
+			response := models.APIResponse[any]{
+				Success: false,
+				Error:   stringPtr("Invalid page parameter: must be a number"),
+			}
+			c.JSON(http.StatusBadRequest, response)
+			return
+		}
 	}
+
+	// Validate limit parameter if provided
+	if limitStr, exists := c.GetQuery("limit"); exists {
+		limit, err = strconv.Atoi(limitStr)
+		if err != nil {
+			response := models.APIResponse[any]{
+				Success: false,
+				Error:   stringPtr("Invalid limit parameter: must be a number"),
+			}
+			c.JSON(http.StatusBadRequest, response)
+			return
+		}
+	}
+
+	filters.Page = page
 	filters.Limit = limit
 
 	// Get banks from service

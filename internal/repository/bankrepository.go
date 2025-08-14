@@ -10,27 +10,18 @@ import (
 	"github.com/wukong0111/go-banks/internal/models"
 )
 
-type BankRepository struct {
+type PostgresBankRepository struct {
 	db *pgxpool.Pool
 }
 
-type BankFilters struct {
-	Environment string
-	Name        string
-	API         string
-	Country     string
-	Page        int
-	Limit       int
+func NewPostgresBankRepository(db *pgxpool.Pool) *PostgresBankRepository {
+	return &PostgresBankRepository{db: db}
 }
 
-func NewBankRepository(db *pgxpool.Pool) *BankRepository {
-	return &BankRepository{db: db}
-}
-
-func (r *BankRepository) GetBanks(ctx context.Context, filters BankFilters) ([]models.Bank, *models.Pagination, error) {
+func (r *PostgresBankRepository) GetBanks(ctx context.Context, filters BankFilters) ([]models.Bank, *models.Pagination, error) {
 	// Build WHERE clause and arguments
 	var whereConditions []string
-	var args []interface{}
+	var args []any
 	argIndex := 1
 
 	// Environment filter

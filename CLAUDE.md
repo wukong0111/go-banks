@@ -64,10 +64,15 @@ Environment variables with defaults:
 
 Models use pgx v5 types:
 - `pgtype.Array[string]` for PostgreSQL arrays 
-- `map[string]interface{}` for JSONB fields
+- `map[string]any` for JSONB fields
 - Standard Go types with proper JSON/DB tags
 
 Environment type enum: sandbox, production, uat, test
+
+## Code Style Guidelines
+
+- **Modern Go syntax**: Always use `any` instead of `interface{}` (Go 1.18+)
+- **No deprecated types**: Avoid legacy syntax that has modern equivalents
 
 ## Important Notes
 

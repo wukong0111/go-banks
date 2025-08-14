@@ -70,7 +70,7 @@ seed-status: ## Show seeding status and record counts
 # Database Management
 db-clean-data: ## Clean only database data (keeps containers running)
 	@echo "🧹 Cleaning database data..."
-	docker compose exec db psql -U postgres -d bankdb -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+	docker compose exec postgres psql -U postgres -d bankdb -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
 	@echo "✅ Database data cleaned. Run 'make migrate-up' to restore schema."
 
 db-reset: ## Complete reset with volumes (removes everything)
