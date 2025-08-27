@@ -1,66 +1,69 @@
+version: "2"
 run:
-  timeout: 5m
   modules-download-mode: readonly
-
 output:
   formats:
-    - format: colored-line-number
-  
+    text:
+      path: stdout
 linters:
+  enable:
+    - gosec
+    - misspell
+    - revive
+    - unconvert
+  settings:
+    revive:
+      severity: warning
+      rules:
+        - name: exported
+          arguments:
+            - checkPrivateReceivers
+          severity: warning
+          disabled: true
+        - name: blank-imports
+        - name: context-as-argument
+        - name: dot-imports
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+        - name: if-return
+        - name: increment-decrement
+        - name: var-naming
+        - name: package-comments
+          disabled: true
+        - name: range
+        - name: receiver-naming
+        - name: time-naming
+        - name: unexported-return
+        - name: indent-error-flow
+        - name: errorf
+        - name: empty-block
+        - name: superfluous-else
+        - name: unused-parameter
+        - name: unreachable-code
+        - name: redefines-builtin-id
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+formatters:
   enable:
     - gofmt
     - goimports
-    - govet
-    - errcheck
-    - staticcheck
-    - unused
-    - gosimple
-    - ineffassign
-    - typecheck
-    - misspell
-    - revive
-    - gosec
-    - unconvert
-
-linters-settings:
-  gofmt:
-    simplify: true
-  
-  goimports:
-    local-prefixes: github.com/wukong0111/go-banks
-  
-  revive:
-    severity: warning
-    rules:
-      - name: exported
-        severity: warning
-        disabled: true
-        arguments:
-          - "checkPrivateReceivers"
-      - name: blank-imports
-      - name: context-as-argument
-      - name: dot-imports
-      - name: error-return
-      - name: error-strings
-      - name: error-naming
-      - name: if-return
-      - name: increment-decrement
-      - name: var-naming
-      - name: package-comments
-        disabled: true
-      - name: range
-      - name: receiver-naming
-      - name: time-naming
-      - name: unexported-return
-      - name: indent-error-flow
-      - name: errorf
-      - name: empty-block
-      - name: superfluous-else
-      - name: unused-parameter
-      - name: unreachable-code
-      - name: redefines-builtin-id
-
-issues:
-  exclude-use-default: false
-  max-issues-per-linter: 0
-  max-same-issues: 0
+  settings:
+    gofmt:
+      simplify: true
+    goimports:
+      local-prefixes:
+        - github.com/wukong0111/go-banks
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

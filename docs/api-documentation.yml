@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Bank Service API
   description: |
-    API de servicios bancarios.
+    API de servicios bancarios construida con Node.js, Hono.js y TypeScript.
     
     Proporciona endpoints de solo lectura y escritura para datos de bancos y grupos bancarios 
     con configuraciones específicas por ambiente. Utiliza esquema de migración PostgreSQL 
@@ -186,15 +186,13 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
+                  - $ref: '#/components/schemas/PaginatedApiResponse'
                   - type: object
                     properties:
                       data:
                         type: array
                         items:
                           $ref: '#/components/schemas/Bank'
-                      pagination:
-                        $ref: '#/components/schemas/Pagination'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -230,7 +228,7 @@ paths:
                   bic: "BSCHESMM"
                   environments: ["production", "test"]
                   configuration:
-                    enabled: 1
+                    enabled: true
                     blocked: false
                     risky: false
                     app_auth_setup_required: false
@@ -247,12 +245,12 @@ paths:
                   auth_type_choice_required: false
                   configurations:
                     production:
-                      enabled: 1
+                      enabled: true
                       blocked: false
                       risky: false
                       app_auth_setup_required: true
                     test:
-                      enabled: 1
+                      enabled: true
                       blocked: false
                       risky: true
                       app_auth_setup_required: false
@@ -286,8 +284,10 @@ paths:
     get:
       summary: Obtener Detalles de Banco
       description: |
-        Obtiene los detalles completos de un banco específico incluyendo 
-        todas sus configuraciones de ambiente. Requiere permiso `banks:read`.
+        Obtiene los detalles completos de un banco específico. 
+        - Sin parámetro `env`: devuelve todas las configuraciones de ambiente (BankWithEnvironments)
+        - Con parámetro `env`: devuelve solo la configuración del ambiente especificado (BankWithEnvironment)
+        Requiere permiso `banks:read`.
       tags:
         - Banks
       parameters:
@@ -297,7 +297,16 @@ paths:
           description: ID único del banco
           schema:
             type: string
-            example: "santander_es"
+            example: "BES2100"
+        - name: env
+          in: query
+          required: false
+          description: |
+            Ambiente específico a obtener. Si no se especifica, devuelve todas las configuraciones de ambiente.
+          schema:
+            type: string
+            enum: [production, test, sandbox, development]
+            example: "production"
       responses:
         '200':
           description: Detalles del banco obtenidos exitosamente
@@ -309,7 +318,46 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/BankWithEnvironments'
+                        oneOf:
+                          - $ref: '#/components/schemas/BankWithEnvironments'
+                          - $ref: '#/components/schemas/BankWithEnvironment'
+              examples:
+                allEnvironments:
+                  summary: Sin parámetro env (todos los ambientes)
+                  description: Respuesta cuando no se especifica el parámetro env
+                  value:
+                    success: true
+                    data:
+                      bank_id: "BES2100"
+                      name: "Banco Santander"
+                      country: "ES"
+                      api: "berlin_group"
+                      environment_configs:
+                        production:
+                          environment: "production"
+                          enabled: true
+                          blocked: false
+                          risky: false
+                        sandbox:
+                          environment: "sandbox"
+                          enabled: true
+                          blocked: false
+                          risky: true
+                specificEnvironment:
+                  summary: Con parámetro env=production (ambiente específico)
+                  description: Respuesta cuando se especifica env=production
+                  value:
+                    success: true
+                    data:
+                      bank_id: "BES2100"
+                      name: "Banco Santander"
+                      country: "ES"
+                      api: "berlin_group"
+                      environment_config:
+                        environment: "production"
+                        enabled: true
+                        blocked: false
+                        risky: false
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -505,10 +553,22 @@ components:
         error:
           type: string
           description: Mensaje de error (solo presente si success es false)
-        pagination:
-          $ref: '#/components/schemas/Pagination'
+        timestamp:
+          type: string
+          format: date-time
+          description: Timestamp de la respuesta (presente en respuestas de error)
       required:
         - success
+
+    PaginatedApiResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            pagination:
+              $ref: '#/components/schemas/Pagination'
+          required:
+            - pagination
 
     Pagination:
       type: object
@@ -685,16 +745,36 @@ components:
         - risky
         - app_auth_setup_required
 
+    BankWithEnvironment:
+      allOf:
+        - $ref: '#/components/schemas/Bank'
+        - type: object
+          properties:
+            environment_config:
+              $ref: '#/components/schemas/BankEnvironmentConfig'
+              description: Configuración específica del ambiente solicitado
+
     BankWithEnvironments:
       allOf:
         - $ref: '#/components/schemas/Bank'
         - type: object
           properties:
             environment_configs:
-              type: array
-              items:
+              type: object
+              additionalProperties:
                 $ref: '#/components/schemas/BankEnvironmentConfig'
-              description: Configuraciones por ambiente
+              description: |
+                Configuraciones por ambiente. El objeto tiene como claves los nombres 
+                de los ambientes (production, test, sandbox, development) y como valores 
+                las configuraciones correspondientes. 
+                
+                Ejemplo:
+                ```json
+                {
+                  "production": { "environment": "production", "enabled": true, ... },
+                  "sandbox": { "environment": "sandbox", "enabled": false, ... }
+                }
+                ```
 
     CreateBankRequest:
       oneOf:

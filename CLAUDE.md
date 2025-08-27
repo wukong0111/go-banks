@@ -24,34 +24,20 @@ Go banking service API with PostgreSQL database. Uses pgx v5 for database connec
 
 ## Development Commands
 
-**Database Management:**
+**Essential Commands:**
 ```bash
-# Start PostgreSQL container
-docker compose up -d
+# Start development environment
+docker compose up -d     # Start PostgreSQL container
+make migrate-up          # Apply migrations
+make seed                # Load test data
+make dev                 # Start with live reload
 
-# Database migrations
-make migrate-up          # Apply all pending migrations  
-make migrate-down        # Roll back all migrations
-make migrate-status      # Show migration status
-make migrate-steps N=1   # Apply/rollback N steps
-
-# Database seeding
-make seed                # Run all seeders
-make seed-debug          # Run with verbose logging
-make seed-reset          # Clean data and re-seed
-make seed-status         # Show record counts
-
-# Database reset
-make db-clean-data       # Clean data only (keeps containers)
-make db-reset            # Complete reset with volumes
+# Database management
+make migrate-status      # Check migration status
+make db-reset           # Complete database reset
 ```
 
-**Application:**
-```bash
-make dev                 # Start with live reload (uses wgo)
-make build               # Build binary to bin/api
-make run                 # Build and run
-```
+For all available commands see `Makefile` or run `make help`
 
 ## Configuration
 
