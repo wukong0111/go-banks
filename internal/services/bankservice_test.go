@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/wukong0111/go-banks/internal/models"
@@ -301,5 +302,201 @@ func TestBankService_GetBanks_MaxLimitEnforcement(t *testing.T) {
 	// Verify max limit was enforced
 	if receivedFilters.Limit != 100 {
 		t.Errorf("Expected limit capped to 100, got %d", receivedFilters.Limit)
+	}
+}
+
+func TestBankService_GetBankDetails_AllEnvironments(t *testing.T) {
+	// Test data
+	expectedBank := &models.Bank{
+		BankID:  "TEST001",
+		Name:    "Test Bank",
+		Country: "ES",
+	}
+
+	expectedConfigs := map[string]*models.BankEnvironmentConfig{
+		"production": {
+			BankID:      "TEST001",
+			Environment: models.EnvironmentProduction,
+			Enabled:     true,
+		},
+		"sandbox": {
+			BankID:      "TEST001",
+			Environment: models.EnvironmentSandbox,
+			Enabled:     true,
+		},
+	}
+
+	mockRepo := &MockBankRepository{
+		GetBankByIDFunc: func(_ context.Context, bankID string) (*models.Bank, error) {
+			if bankID == "TEST001" {
+				return expectedBank, nil
+			}
+			return nil, errors.New("bank not found")
+		},
+		GetBankEnvironmentConfigsFunc: func(_ context.Context, bankID string, environment string) (map[string]*models.BankEnvironmentConfig, error) {
+			if bankID == "TEST001" && environment == "" {
+				return expectedConfigs, nil
+			}
+			return nil, errors.New("config not found")
+		},
+	}
+
+	service := NewBankService(mockRepo)
+
+	result, err := service.GetBankDetails(context.Background(), "TEST001", "")
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	bankWithEnvs, ok := result.(*models.BankWithEnvironments)
+	if !ok {
+		t.Fatalf("Expected BankWithEnvironments, got %T", result)
+	}
+
+	if bankWithEnvs.BankID != expectedBank.BankID {
+		t.Errorf("Expected bank ID %s, got %s", expectedBank.BankID, bankWithEnvs.BankID)
+	}
+
+	if len(bankWithEnvs.EnvironmentConfigs) != 2 {
+		t.Errorf("Expected 2 environment configs, got %d", len(bankWithEnvs.EnvironmentConfigs))
+	}
+}
+
+func TestBankService_GetBankDetails_SpecificEnvironment(t *testing.T) {
+	expectedBank := &models.Bank{
+		BankID:  "TEST001",
+		Name:    "Test Bank",
+		Country: "ES",
+	}
+
+	expectedConfig := &models.BankEnvironmentConfig{
+		BankID:      "TEST001",
+		Environment: models.EnvironmentProduction,
+		Enabled:     true,
+	}
+
+	expectedConfigs := map[string]*models.BankEnvironmentConfig{
+		"production": expectedConfig,
+	}
+
+	mockRepo := &MockBankRepository{
+		GetBankByIDFunc: func(_ context.Context, _ string) (*models.Bank, error) {
+			return expectedBank, nil
+		},
+		GetBankEnvironmentConfigsFunc: func(_ context.Context, _ string, environment string) (map[string]*models.BankEnvironmentConfig, error) {
+			if environment == "production" {
+				return expectedConfigs, nil
+			}
+			return nil, errors.New("config not found")
+		},
+	}
+
+	service := NewBankService(mockRepo)
+
+	result, err := service.GetBankDetails(context.Background(), "TEST001", "production")
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	bankWithEnv, ok := result.(*models.BankWithEnvironment)
+	if !ok {
+		t.Fatalf("Expected BankWithEnvironment, got %T", result)
+	}
+
+	if bankWithEnv.BankID != expectedBank.BankID {
+		t.Errorf("Expected bank ID %s, got %s", expectedBank.BankID, bankWithEnv.BankID)
+	}
+
+	if bankWithEnv.EnvironmentConfig.Environment != models.EnvironmentProduction {
+		t.Errorf("Expected environment production, got %s", bankWithEnv.EnvironmentConfig.Environment)
+	}
+}
+
+func TestBankService_GetBankDetails_BankNotFound(t *testing.T) {
+	mockRepo := &MockBankRepository{
+		GetBankByIDFunc: func(_ context.Context, _ string) (*models.Bank, error) {
+			return nil, errors.New("no rows in result set")
+		},
+	}
+
+	service := NewBankService(mockRepo)
+
+	_, err := service.GetBankDetails(context.Background(), "NONEXISTENT", "")
+	if err == nil {
+		t.Fatal("Expected error for non-existent bank")
+	}
+
+	if !strings.Contains(err.Error(), "bank not found") {
+		t.Errorf("Expected 'bank not found' error, got %v", err)
+	}
+}
+
+func TestBankService_GetBankDetails_InvalidEnvironment(t *testing.T) {
+	service := NewBankService(&MockBankRepository{})
+
+	_, err := service.GetBankDetails(context.Background(), "TEST001", "invalid")
+	if err == nil {
+		t.Fatal("Expected error for invalid environment")
+	}
+
+	if !strings.Contains(err.Error(), "invalid environment") {
+		t.Errorf("Expected 'invalid environment' error, got %v", err)
+	}
+}
+
+func TestBankService_GetBankDetails_ValidEnvNoConfig(t *testing.T) {
+	expectedBank := &models.Bank{
+		BankID:  "TEST001",
+		Name:    "Test Bank",
+		Country: "ES",
+	}
+
+	mockRepo := &MockBankRepository{
+		GetBankByIDFunc: func(_ context.Context, _ string) (*models.Bank, error) {
+			return expectedBank, nil
+		},
+		GetBankEnvironmentConfigsFunc: func(_ context.Context, _ string, _ string) (map[string]*models.BankEnvironmentConfig, error) {
+			// Return empty map - no config for this environment
+			return map[string]*models.BankEnvironmentConfig{}, nil
+		},
+	}
+
+	service := NewBankService(mockRepo)
+
+	_, err := service.GetBankDetails(context.Background(), "TEST001", "production")
+	if err == nil {
+		t.Fatal("Expected error when environment config not found")
+	}
+
+	if !strings.Contains(err.Error(), "environment configuration not found") {
+		t.Errorf("Expected 'environment configuration not found' error, got %v", err)
+	}
+}
+
+func TestBankService_GetBankDetails_RepositoryError(t *testing.T) {
+	expectedBank := &models.Bank{
+		BankID:  "TEST001",
+		Name:    "Test Bank",
+		Country: "ES",
+	}
+
+	mockRepo := &MockBankRepository{
+		GetBankByIDFunc: func(_ context.Context, _ string) (*models.Bank, error) {
+			return expectedBank, nil
+		},
+		GetBankEnvironmentConfigsFunc: func(_ context.Context, _ string, _ string) (map[string]*models.BankEnvironmentConfig, error) {
+			return nil, errors.New("database connection error")
+		},
+	}
+
+	service := NewBankService(mockRepo)
+
+	_, err := service.GetBankDetails(context.Background(), "TEST001", "")
+	if err == nil {
+		t.Fatal("Expected error from repository")
+	}
+
+	if !strings.Contains(err.Error(), "failed to get environment configs") {
+		t.Errorf("Expected repository error to be wrapped, got %v", err)
 	}
 }
