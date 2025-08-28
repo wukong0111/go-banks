@@ -4,17 +4,26 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
 
+	"github.com/wukong0111/go-banks/internal/auth"
 	"github.com/wukong0111/go-banks/internal/config"
 	"github.com/wukong0111/go-banks/internal/handlers"
+	"github.com/wukong0111/go-banks/internal/middleware"
 	"github.com/wukong0111/go-banks/internal/repository"
 	"github.com/wukong0111/go-banks/internal/services"
 )
 
 func main() {
+	// Load .env file if it exists
+	if err := godotenv.Load(); err != nil {
+		log.Printf("Warning: Could not load .env file: %v", err)
+	}
+
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
@@ -38,6 +47,14 @@ func main() {
 	bankService := services.NewBankService(bankRepo)
 	bankHandler := handlers.NewBankHandler(bankService)
 
+	// Initialize JWT service and auth middleware
+	jwtExpiry, err := time.ParseDuration(cfg.JWT.Expiry)
+	if err != nil {
+		log.Fatalf("Invalid JWT expiry duration: %v", err)
+	}
+	jwtService := auth.NewJWTService(cfg.JWT.Secret, jwtExpiry)
+	authMiddleware := middleware.NewAuthMiddleware(jwtService)
+
 	// Setup Gin router
 	r := gin.Default()
 
@@ -48,11 +65,16 @@ func main() {
 		})
 	})
 
-	// API routes
+	// API routes with authentication
 	api := r.Group("/api")
 	{
-		api.GET("/banks", bankHandler.GetBanks)
-		api.GET("/banks/:bankId/details", bankHandler.GetBankDetails)
+		// Bank endpoints require banks:read permission
+		api.GET("/banks",
+			authMiddleware.RequireAuth("banks:read"),
+			bankHandler.GetBanks)
+		api.GET("/banks/:bankId/details",
+			authMiddleware.RequireAuth("banks:read"),
+			bankHandler.GetBankDetails)
 	}
 
 	log.Printf("Server starting on :%d", cfg.Port)

@@ -59,6 +59,7 @@ Environment type enum: sandbox, production, uat, test
 
 - **Modern Go syntax**: Always use `any` instead of `interface{}` (Go 1.18+)
 - **No deprecated types**: Avoid legacy syntax that has modern equivalents
+- **Use slices package**: Prefer `slices.Contains()` over manual loops for slice operations (Go 1.21+)
 
 ## Important Notes
 

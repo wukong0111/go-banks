@@ -1,7 +1,7 @@
 # Bank Service Makefile
 # Commands to manage the bank service development environment
 
-.PHONY: help clean build test format format-check dev run lint lint-fix
+.PHONY: help clean build test format format-check dev run lint lint-fix token token-read token-write token-admin
 .DEFAULT_GOAL := help
 
 # Using standard compose.yml file
@@ -81,3 +81,33 @@ db-reset: ## Complete reset with volumes (removes everything)
 	@echo "⏳ Waiting for services to be ready..."
 	@sleep 10
 	@echo "✅ Complete reset done. Run 'make migrate-up' to apply migrations."
+
+# JWT Token Commands
+token: ## Generate JWT token with default permissions (banks:read)
+	@echo "🔑 Generating JWT token..."
+	@go run cmd/token/main.go
+
+token-read: ## Generate JWT token with read permissions only
+	@echo "🔑 Generating JWT token with read permissions..."
+	@go run cmd/token/main.go -permissions banks:read
+
+token-write: ## Generate JWT token with write permissions only
+	@echo "🔑 Generating JWT token with write permissions..."
+	@go run cmd/token/main.go -permissions banks:write
+
+token-admin: ## Generate JWT token with all permissions (read + write)
+	@echo "🔑 Generating JWT token with admin permissions..."
+	@go run cmd/token/main.go -permissions banks:read,banks:write
+
+token-custom: ## Generate JWT token with custom settings (use: make token-custom PERMISSIONS=banks:read EXPIRY=1h)
+	@if [ -z "$(PERMISSIONS)" ]; then \
+		echo "Usage: make token-custom PERMISSIONS=<perms> [EXPIRY=<duration>]"; \
+		echo "Example: make token-custom PERMISSIONS=banks:read,banks:write EXPIRY=2h"; \
+		exit 1; \
+	fi
+	@echo "🔑 Generating custom JWT token..."
+	@if [ -n "$(EXPIRY)" ]; then \
+		go run cmd/token/main.go -permissions $(PERMISSIONS) -expiry $(EXPIRY); \
+	else \
+		go run cmd/token/main.go -permissions $(PERMISSIONS); \
+	fi

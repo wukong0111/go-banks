@@ -10,6 +10,7 @@ type Config struct {
 	Port     int             `json:"port"`
 	Database *DatabaseConfig `json:"database"`
 	JWT      *JWTConfig      `json:"jwt"`
+	APIKey   string          `json:"api_key"`
 }
 
 type DatabaseConfig struct {
@@ -28,7 +29,8 @@ type JWTConfig struct {
 
 func Load() (*Config, error) {
 	config := &Config{
-		Port: getEnvAsInt("PORT", 8080),
+		Port:   getEnvAsInt("PORT", 8080),
+		APIKey: getEnv("API_KEY", "dev-api-key"),
 		Database: &DatabaseConfig{
 			Host:     getEnv("DB_HOST", "localhost"),
 			Port:     getEnvAsInt("DB_PORT", 5432),
