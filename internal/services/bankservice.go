@@ -2,6 +2,10 @@ package services
 
 import (
 	"context"
+	"fmt"
+	"strings"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/wukong0111/go-banks/internal/models"
 	"github.com/wukong0111/go-banks/internal/repository"
@@ -53,4 +57,59 @@ func (s *BankService) normalizeFilters(filters repository.BankFilters) repositor
 	}
 
 	return filters
+}
+
+func (s *BankService) GetBankDetails(ctx context.Context, bankID string, environment string) (any, error) {
+	// If specific environment is requested, validate it first
+	if environment != "" {
+		if !s.isValidEnvironment(environment) {
+			return nil, fmt.Errorf("invalid environment: %s", environment)
+		}
+	}
+
+	// Get the bank by ID first
+	bank, err := s.bankRepo.GetBankByID(ctx, bankID)
+	if err != nil {
+		if err == pgx.ErrNoRows || strings.Contains(err.Error(), "no rows in result set") {
+			return nil, fmt.Errorf("bank not found")
+		}
+		return nil, fmt.Errorf("failed to get bank: %w", err)
+	}
+
+	// Get environment configurations
+	envConfigs, err := s.bankRepo.GetBankEnvironmentConfigs(ctx, bankID, environment)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get environment configs: %w", err)
+	}
+
+	// If specific environment is requested
+	if environment != "" {
+
+		config, exists := envConfigs[environment]
+		if !exists {
+			return nil, fmt.Errorf("environment configuration not found for %s", environment)
+		}
+
+		return &models.BankWithEnvironment{
+			Bank:              *bank,
+			EnvironmentConfig: config,
+		}, nil
+	}
+
+	// Return all environments
+	return &models.BankWithEnvironments{
+		Bank:               *bank,
+		EnvironmentConfigs: envConfigs,
+	}, nil
+}
+
+// isValidEnvironment validates if the provided environment is valid
+func (s *BankService) isValidEnvironment(env string) bool {
+	validEnvironments := []string{"sandbox", "production", "uat", "test"}
+	for _, validEnv := range validEnvironments {
+		if env == validEnv {
+			return true
+		}
+	}
+	return false
 }

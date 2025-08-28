@@ -24,9 +24,9 @@ type BankEnvironmentConfig struct {
 	SupportsInstantPayments      *bool           `json:"supports_instant_payments" db:"supports_instant_payments"`
 	InstantPaymentsActivated     *bool           `json:"instant_payments_activated" db:"instant_payments_activated"`
 	InstantPaymentsLimit         *int32          `json:"instant_payments_limit" db:"instant_payments_limit"`
-	OkStatusCodesSimplePayment   map[string]any  `json:"ok_status_codes_simple_payment" db:"ok_status_codes_simple_payment"`
-	OkStatusCodesInstantPayment  map[string]any  `json:"ok_status_codes_instant_payment" db:"ok_status_codes_instant_payment"`
-	OkStatusCodesPeriodicPayment map[string]any  `json:"ok_status_codes_periodic_payment" db:"ok_status_codes_periodic_payment"`
+	OkStatusCodesSimplePayment   []string        `json:"ok_status_codes_simple_payment" db:"ok_status_codes_simple_payment"`
+	OkStatusCodesInstantPayment  []string        `json:"ok_status_codes_instant_payment" db:"ok_status_codes_instant_payment"`
+	OkStatusCodesPeriodicPayment []string        `json:"ok_status_codes_periodic_payment" db:"ok_status_codes_periodic_payment"`
 	EnabledPeriodicPayment       *bool           `json:"enabled_periodic_payment" db:"enabled_periodic_payment"`
 	FrequencyPeriodicPayment     *string         `json:"frequency_periodic_payment" db:"frequency_periodic_payment"`
 	ConfigPeriodicPayment        *string         `json:"config_periodic_payment" db:"config_periodic_payment"`

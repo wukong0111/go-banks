@@ -52,6 +52,7 @@ func main() {
 	api := r.Group("/api")
 	{
 		api.GET("/banks", bankHandler.GetBanks)
+		api.GET("/banks/:bankId/details", bankHandler.GetBankDetails)
 	}
 
 	log.Printf("Server starting on :%d", cfg.Port)

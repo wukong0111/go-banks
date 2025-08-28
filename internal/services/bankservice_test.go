@@ -11,7 +11,9 @@ import (
 
 // MockBankRepository implements the BankRepository interface for testing
 type MockBankRepository struct {
-	GetBanksFunc func(ctx context.Context, filters repository.BankFilters) ([]models.Bank, *models.Pagination, error)
+	GetBanksFunc                  func(ctx context.Context, filters repository.BankFilters) ([]models.Bank, *models.Pagination, error)
+	GetBankByIDFunc               func(ctx context.Context, bankID string) (*models.Bank, error)
+	GetBankEnvironmentConfigsFunc func(ctx context.Context, bankID string, environment string) (map[string]*models.BankEnvironmentConfig, error)
 }
 
 func (m *MockBankRepository) GetBanks(ctx context.Context, filters repository.BankFilters) ([]models.Bank, *models.Pagination, error) {
@@ -19,6 +21,20 @@ func (m *MockBankRepository) GetBanks(ctx context.Context, filters repository.Ba
 		return m.GetBanksFunc(ctx, filters)
 	}
 	return nil, nil, nil
+}
+
+func (m *MockBankRepository) GetBankByID(ctx context.Context, bankID string) (*models.Bank, error) {
+	if m.GetBankByIDFunc != nil {
+		return m.GetBankByIDFunc(ctx, bankID)
+	}
+	return nil, nil
+}
+
+func (m *MockBankRepository) GetBankEnvironmentConfigs(ctx context.Context, bankID string, environment string) (map[string]*models.BankEnvironmentConfig, error) {
+	if m.GetBankEnvironmentConfigsFunc != nil {
+		return m.GetBankEnvironmentConfigsFunc(ctx, bankID, environment)
+	}
+	return nil, nil
 }
 
 func TestBankService_GetBanks(t *testing.T) {
