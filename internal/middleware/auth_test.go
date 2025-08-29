@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/wukong0111/go-banks/internal/auth"
 )
@@ -22,9 +24,7 @@ func TestAuthMiddleware_RequireAuth_ValidToken(t *testing.T) {
 
 	// Generate valid token
 	token, err := jwtService.GenerateToken([]string{"banks:read"})
-	if err != nil {
-		t.Fatalf("Failed to generate token: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Create gin router
 	router := gin.New()
@@ -41,9 +41,7 @@ func TestAuthMiddleware_RequireAuth_ValidToken(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	// Assert
-	if w.Code != http.StatusOK {
-		t.Errorf("Expected status 200, got %d", w.Code)
-	}
+	assert.Equal(t, http.StatusOK, w.Code)
 }
 
 func TestAuthMiddleware_RequireAuth_MissingAuthorizationHeader(t *testing.T) {
@@ -65,9 +63,7 @@ func TestAuthMiddleware_RequireAuth_MissingAuthorizationHeader(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	// Assert
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("Expected status 401, got %d", w.Code)
-	}
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
 
 func TestAuthMiddleware_RequireAuth_InvalidBearerFormat(t *testing.T) {
@@ -100,9 +96,7 @@ func TestAuthMiddleware_RequireAuth_InvalidBearerFormat(t *testing.T) {
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, req)
 
-			if w.Code != http.StatusUnauthorized {
-				t.Errorf("Expected status 401, got %d for case: %s", w.Code, tc.name)
-			}
+			assert.Equal(t, http.StatusUnauthorized, w.Code)
 		})
 	}
 }
@@ -127,9 +121,7 @@ func TestAuthMiddleware_RequireAuth_InvalidToken(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	// Assert
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("Expected status 401, got %d", w.Code)
-	}
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
 
 func TestAuthMiddleware_RequireAuth_ExpiredToken(t *testing.T) {
@@ -139,9 +131,7 @@ func TestAuthMiddleware_RequireAuth_ExpiredToken(t *testing.T) {
 
 	// Generate token (will be expired immediately)
 	token, err := jwtService.GenerateToken([]string{"banks:read"})
-	if err != nil {
-		t.Fatalf("Failed to generate token: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Wait to ensure token is expired
 	time.Sleep(10 * time.Millisecond)
@@ -161,9 +151,7 @@ func TestAuthMiddleware_RequireAuth_ExpiredToken(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	// Assert
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("Expected status 401, got %d", w.Code)
-	}
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
 
 func TestAuthMiddleware_RequireAuth_InsufficientPermissions(t *testing.T) {
@@ -173,9 +161,7 @@ func TestAuthMiddleware_RequireAuth_InsufficientPermissions(t *testing.T) {
 
 	// Generate token with only read permission
 	token, err := jwtService.GenerateToken([]string{"banks:read"})
-	if err != nil {
-		t.Fatalf("Failed to generate token: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Create gin router that requires write permission
 	router := gin.New()
@@ -192,9 +178,7 @@ func TestAuthMiddleware_RequireAuth_InsufficientPermissions(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	// Assert
-	if w.Code != http.StatusForbidden {
-		t.Errorf("Expected status 403, got %d", w.Code)
-	}
+	assert.Equal(t, http.StatusForbidden, w.Code)
 }
 
 func TestAuthMiddleware_RequireAuth_MultiplePermissions(t *testing.T) {
@@ -204,9 +188,7 @@ func TestAuthMiddleware_RequireAuth_MultiplePermissions(t *testing.T) {
 
 	// Generate token with read permission
 	token, err := jwtService.GenerateToken([]string{"banks:read"})
-	if err != nil {
-		t.Fatalf("Failed to generate token: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Create gin router that requires either read OR write permission
 	router := gin.New()
@@ -223,9 +205,7 @@ func TestAuthMiddleware_RequireAuth_MultiplePermissions(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	// Assert
-	if w.Code != http.StatusOK {
-		t.Errorf("Expected status 200, got %d", w.Code)
-	}
+	assert.Equal(t, http.StatusOK, w.Code)
 }
 
 func TestAuthMiddleware_RequireAuth_NoPermissionsRequired(t *testing.T) {
@@ -235,9 +215,7 @@ func TestAuthMiddleware_RequireAuth_NoPermissionsRequired(t *testing.T) {
 
 	// Generate token with any permission
 	token, err := jwtService.GenerateToken([]string{"banks:read"})
-	if err != nil {
-		t.Fatalf("Failed to generate token: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Create gin router with no specific permission requirements
 	router := gin.New()
@@ -254,9 +232,7 @@ func TestAuthMiddleware_RequireAuth_NoPermissionsRequired(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	// Assert
-	if w.Code != http.StatusOK {
-		t.Errorf("Expected status 200, got %d", w.Code)
-	}
+	assert.Equal(t, http.StatusOK, w.Code)
 }
 
 func TestAuthMiddleware_GetClaims(t *testing.T) {
@@ -266,9 +242,7 @@ func TestAuthMiddleware_GetClaims(t *testing.T) {
 
 	// Generate valid token
 	token, err := jwtService.GenerateToken([]string{"banks:read", "banks:write"})
-	if err != nil {
-		t.Fatalf("Failed to generate token: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Create gin router
 	router := gin.New()
@@ -302,9 +276,7 @@ func TestAuthMiddleware_GetClaims(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	// Assert
-	if w.Code != http.StatusOK {
-		t.Errorf("Expected status 200, got %d", w.Code)
-	}
+	assert.Equal(t, http.StatusOK, w.Code)
 }
 
 func TestAuthMiddleware_GetPermissions(t *testing.T) {
@@ -315,9 +287,7 @@ func TestAuthMiddleware_GetPermissions(t *testing.T) {
 	// Generate valid token
 	expectedPermissions := []string{"banks:read", "banks:write"}
 	token, err := jwtService.GenerateToken(expectedPermissions)
-	if err != nil {
-		t.Fatalf("Failed to generate token: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Create gin router
 	router := gin.New()
@@ -346,7 +316,5 @@ func TestAuthMiddleware_GetPermissions(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	// Assert
-	if w.Code != http.StatusOK {
-		t.Errorf("Expected status 200, got %d", w.Code)
-	}
+	assert.Equal(t, http.StatusOK, w.Code)
 }

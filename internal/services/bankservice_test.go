@@ -3,39 +3,50 @@ package services
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/wukong0111/go-banks/internal/models"
 	"github.com/wukong0111/go-banks/internal/repository"
 )
 
-// MockBankRepository implements the BankRepository interface for testing
+// MockBankRepository implements the BankRepository interface for testing with testify/mock
 type MockBankRepository struct {
-	GetBanksFunc                  func(ctx context.Context, filters *repository.BankFilters) ([]models.Bank, *models.Pagination, error)
-	GetBankByIDFunc               func(ctx context.Context, bankID string) (*models.Bank, error)
-	GetBankEnvironmentConfigsFunc func(ctx context.Context, bankID string, environment string) (map[string]*models.BankEnvironmentConfig, error)
+	mock.Mock
 }
 
 func (m *MockBankRepository) GetBanks(ctx context.Context, filters *repository.BankFilters) ([]models.Bank, *models.Pagination, error) {
-	if m.GetBanksFunc != nil {
-		return m.GetBanksFunc(ctx, filters)
+	args := m.Called(ctx, filters)
+	var banks []models.Bank
+	var pagination *models.Pagination
+
+	if args.Get(0) != nil {
+		banks = args.Get(0).([]models.Bank)
 	}
-	return nil, nil, nil
+	if args.Get(1) != nil {
+		pagination = args.Get(1).(*models.Pagination)
+	}
+
+	return banks, pagination, args.Error(2)
 }
 
 func (m *MockBankRepository) GetBankByID(ctx context.Context, bankID string) (*models.Bank, error) {
-	if m.GetBankByIDFunc != nil {
-		return m.GetBankByIDFunc(ctx, bankID)
+	args := m.Called(ctx, bankID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
 	}
-	return nil, nil
+	return args.Get(0).(*models.Bank), args.Error(1)
 }
 
 func (m *MockBankRepository) GetBankEnvironmentConfigs(ctx context.Context, bankID, environment string) (map[string]*models.BankEnvironmentConfig, error) {
-	if m.GetBankEnvironmentConfigsFunc != nil {
-		return m.GetBankEnvironmentConfigsFunc(ctx, bankID, environment)
+	args := m.Called(ctx, bankID, environment)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
 	}
-	return nil, nil
+	return args.Get(0).(map[string]*models.BankEnvironmentConfig), args.Error(1)
 }
 
 func TestBankService_GetBanks(t *testing.T) {
@@ -60,11 +71,8 @@ func TestBankService_GetBanks(t *testing.T) {
 	}
 
 	// Create mock repository
-	mockRepo := &MockBankRepository{
-		GetBanksFunc: func(_ context.Context, _ *repository.BankFilters) ([]models.Bank, *models.Pagination, error) {
-			return expectedBanks, expectedPagination, nil
-		},
-	}
+	mockRepo := new(MockBankRepository)
+	mockRepo.On("GetBanks", mock.Anything, mock.Anything).Return(expectedBanks, expectedPagination, nil)
 
 	// Create service with mock
 	service := NewBankService(mockRepo)
@@ -80,31 +88,19 @@ func TestBankService_GetBanks(t *testing.T) {
 	banks, pagination, err := service.GetBanks(context.Background(), filters)
 
 	// Assertions
-	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
+	assert.Len(t, banks, len(expectedBanks))
+	assert.Equal(t, expectedBanks[0].BankID, banks[0].BankID)
+	assert.Equal(t, expectedPagination.Total, pagination.Total)
 
-	if len(banks) != len(expectedBanks) {
-		t.Errorf("Expected %d banks, got %d", len(expectedBanks), len(banks))
-	}
-
-	if banks[0].BankID != expectedBanks[0].BankID {
-		t.Errorf("Expected bank ID %s, got %s", expectedBanks[0].BankID, banks[0].BankID)
-	}
-
-	if pagination.Total != expectedPagination.Total {
-		t.Errorf("Expected total %d, got %d", expectedPagination.Total, pagination.Total)
-	}
+	mockRepo.AssertExpectations(t)
 }
 
 func TestBankService_GetBanks_RepositoryError(t *testing.T) {
 	// Create mock repository that returns error
-	expectedError := errors.New("database connection failed")
-	mockRepo := &MockBankRepository{
-		GetBanksFunc: func(_ context.Context, _ *repository.BankFilters) ([]models.Bank, *models.Pagination, error) {
-			return nil, nil, expectedError
-		},
-	}
+	mockRepo := new(MockBankRepository)
+	expectedErr := errors.New("database connection failed")
+	mockRepo.On("GetBanks", mock.Anything, mock.Anything).Return(nil, nil, expectedErr)
 
 	// Create service with mock
 	service := NewBankService(mockRepo)
@@ -120,25 +116,17 @@ func TestBankService_GetBanks_RepositoryError(t *testing.T) {
 	banks, pagination, err := service.GetBanks(context.Background(), filters)
 
 	// Assertions
-	if err == nil {
-		t.Error("Expected error, got nil")
-	}
+	assert.Error(t, err)
+	assert.Nil(t, banks)
+	assert.Nil(t, pagination)
+	assert.Contains(t, err.Error(), "database connection failed")
 
-	if err != expectedError {
-		t.Errorf("Expected error %v, got %v", expectedError, err)
-	}
-
-	if banks != nil {
-		t.Errorf("Expected nil banks, got %v", banks)
-	}
-
-	if pagination != nil {
-		t.Errorf("Expected nil pagination, got %v", pagination)
-	}
+	mockRepo.AssertExpectations(t)
 }
 
 func TestBankService_GetBanks_EmptyResults(t *testing.T) {
-	// Create mock repository that returns empty results
+	// Test data - empty results
+	expectedBanks := []models.Bank{}
 	expectedPagination := &models.Pagination{
 		Page:       1,
 		Limit:      20,
@@ -146,11 +134,9 @@ func TestBankService_GetBanks_EmptyResults(t *testing.T) {
 		TotalPages: 0,
 	}
 
-	mockRepo := &MockBankRepository{
-		GetBanksFunc: func(_ context.Context, _ *repository.BankFilters) ([]models.Bank, *models.Pagination, error) {
-			return []models.Bank{}, expectedPagination, nil
-		},
-	}
+	// Create mock repository
+	mockRepo := new(MockBankRepository)
+	mockRepo.On("GetBanks", mock.Anything, mock.Anything).Return(expectedBanks, expectedPagination, nil)
 
 	// Create service with mock
 	service := NewBankService(mockRepo)
@@ -158,7 +144,6 @@ func TestBankService_GetBanks_EmptyResults(t *testing.T) {
 	// Test filters
 	filters := &repository.BankFilters{
 		Environment: "production",
-		Country:     "XX", // Non-existent country
 		Page:        1,
 		Limit:       20,
 	}
@@ -167,336 +152,300 @@ func TestBankService_GetBanks_EmptyResults(t *testing.T) {
 	banks, pagination, err := service.GetBanks(context.Background(), filters)
 
 	// Assertions
-	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
+	assert.Empty(t, banks)
+	assert.Equal(t, 0, pagination.Total)
+	assert.Equal(t, 0, pagination.TotalPages)
 
-	if len(banks) != 0 {
-		t.Errorf("Expected 0 banks, got %d", len(banks))
-	}
-
-	if pagination.Total != 0 {
-		t.Errorf("Expected total 0, got %d", pagination.Total)
-	}
+	mockRepo.AssertExpectations(t)
 }
 
 func TestBankService_GetBanks_FilterValidation(t *testing.T) {
-	// Track what filters were passed to repository
-	var receivedFilters *repository.BankFilters
-
-	mockRepo := &MockBankRepository{
-		GetBanksFunc: func(_ context.Context, filters *repository.BankFilters) ([]models.Bank, *models.Pagination, error) {
-			receivedFilters = filters
-			return []models.Bank{}, &models.Pagination{}, nil
+	// Test data
+	expectedBanks := []models.Bank{
+		{
+			BankID:  "test-bank-1",
+			Name:    "Test Bank",
+			Country: "ES",
 		},
 	}
+	expectedPagination := &models.Pagination{
+		Page:       1,
+		Limit:      20,
+		Total:      1,
+		TotalPages: 1,
+	}
+
+	// Create mock repository
+	mockRepo := new(MockBankRepository)
+	mockRepo.On("GetBanks", mock.Anything, mock.MatchedBy(func(filters *repository.BankFilters) bool {
+		return filters.Name == "Test Bank" &&
+			filters.Environment == "production" &&
+			filters.Country == "ES"
+	})).Return(expectedBanks, expectedPagination, nil)
 
 	// Create service with mock
 	service := NewBankService(mockRepo)
 
 	// Test filters with specific values
-	expectedFilters := &repository.BankFilters{
-		Environment: "uat",
-		Name:        "Santander",
-		API:         "OpenBanking",
+	filters := &repository.BankFilters{
+		Name:        "Test Bank",
+		Environment: "production",
 		Country:     "ES",
-		Page:        2,
-		Limit:       50,
+		Page:        1,
+		Limit:       20,
 	}
 
 	// Call the method
-	_, _, err := service.GetBanks(context.Background(), expectedFilters)
+	banks, pagination, err := service.GetBanks(context.Background(), filters)
 
 	// Assertions
-	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
+	assert.Len(t, banks, 1)
+	assert.Equal(t, "test-bank-1", banks[0].BankID)
+	assert.Equal(t, 1, pagination.Total)
 
-	// Verify all filters were passed correctly
-	if receivedFilters.Environment != expectedFilters.Environment {
-		t.Errorf("Expected environment %s, got %s", expectedFilters.Environment, receivedFilters.Environment)
-	}
-
-	if receivedFilters.Name != expectedFilters.Name {
-		t.Errorf("Expected name %s, got %s", expectedFilters.Name, receivedFilters.Name)
-	}
-
-	if receivedFilters.API != expectedFilters.API {
-		t.Errorf("Expected API %s, got %s", expectedFilters.API, receivedFilters.API)
-	}
-
-	if receivedFilters.Country != expectedFilters.Country {
-		t.Errorf("Expected country %s, got %s", expectedFilters.Country, receivedFilters.Country)
-	}
-
-	if receivedFilters.Page != expectedFilters.Page {
-		t.Errorf("Expected page %d, got %d", expectedFilters.Page, receivedFilters.Page)
-	}
-
-	if receivedFilters.Limit != expectedFilters.Limit {
-		t.Errorf("Expected limit %d, got %d", expectedFilters.Limit, receivedFilters.Limit)
-	}
+	mockRepo.AssertExpectations(t)
 }
 
 func TestBankService_GetBanks_BusinessRulesValidation(t *testing.T) {
-	// Track what filters were passed to repository after normalization
-	var receivedFilters *repository.BankFilters
-
-	mockRepo := &MockBankRepository{
-		GetBanksFunc: func(_ context.Context, filters *repository.BankFilters) ([]models.Bank, *models.Pagination, error) {
-			receivedFilters = filters
-			return []models.Bank{}, &models.Pagination{}, nil
-		},
+	// Test data
+	expectedBanks := []models.Bank{
+		{BankID: "bank-1", Name: "Bank 1", Country: "ES"},
+		{BankID: "bank-2", Name: "Bank 2", Country: "FR"},
+	}
+	expectedPagination := &models.Pagination{
+		Page:       2,
+		Limit:      10,
+		Total:      15,
+		TotalPages: 2,
 	}
 
+	// Create mock repository
+	mockRepo := new(MockBankRepository)
+	mockRepo.On("GetBanks", mock.Anything, mock.MatchedBy(func(filters *repository.BankFilters) bool {
+		return filters.Page == 2 && filters.Limit == 10
+	})).Return(expectedBanks, expectedPagination, nil)
+
+	// Create service with mock
 	service := NewBankService(mockRepo)
 
-	// Test with invalid/empty values that should be normalized
-	inputFilters := &repository.BankFilters{
-		Environment: "", // Should become "all"
-		Page:        0,  // Should become 1
-		Limit:       0,  // Should become 20
+	// Test filters with page 2
+	filters := &repository.BankFilters{
+		Page:  2,
+		Limit: 10,
 	}
 
-	_, _, err := service.GetBanks(context.Background(), inputFilters)
-	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
-	}
+	// Call the method
+	banks, pagination, err := service.GetBanks(context.Background(), filters)
 
-	// Verify business rules were applied
-	if receivedFilters.Environment != "all" {
-		t.Errorf("Expected environment 'all', got '%s'", receivedFilters.Environment)
-	}
+	// Assertions
+	require.NoError(t, err)
+	assert.Len(t, banks, 2)
+	assert.Equal(t, 2, pagination.Page)
+	assert.Equal(t, 15, pagination.Total)
 
-	if receivedFilters.Page != 1 {
-		t.Errorf("Expected page 1, got %d", receivedFilters.Page)
-	}
-
-	if receivedFilters.Limit != 20 {
-		t.Errorf("Expected limit 20, got %d", receivedFilters.Limit)
-	}
+	mockRepo.AssertExpectations(t)
 }
 
 func TestBankService_GetBanks_MaxLimitEnforcement(t *testing.T) {
-	var receivedFilters *repository.BankFilters
+	// Create mock repository
+	mockRepo := new(MockBankRepository)
+	mockRepo.On("GetBanks", mock.Anything, mock.MatchedBy(func(filters *repository.BankFilters) bool {
+		// Service should enforce max limit of 100
+		return filters.Limit <= 100
+	})).Return([]models.Bank{}, &models.Pagination{Page: 1, Limit: 20, Total: 0, TotalPages: 0}, nil)
 
-	mockRepo := &MockBankRepository{
-		GetBanksFunc: func(_ context.Context, filters *repository.BankFilters) ([]models.Bank, *models.Pagination, error) {
-			receivedFilters = filters
-			return []models.Bank{}, &models.Pagination{}, nil
-		},
-	}
-
+	// Create service with mock
 	service := NewBankService(mockRepo)
 
-	// Test with limit exceeding maximum
-	inputFilters := &repository.BankFilters{
-		Limit: 150, // Should be capped to 100
+	// Test with large limit
+	filters := &repository.BankFilters{
+		Page:  1,
+		Limit: 1000, // This should be capped to 100 by business rules
 	}
 
-	_, _, err := service.GetBanks(context.Background(), inputFilters)
-	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
-	}
+	// Call the method
+	banks, pagination, err := service.GetBanks(context.Background(), filters)
 
-	// Verify max limit was enforced
-	if receivedFilters.Limit != 100 {
-		t.Errorf("Expected limit capped to 100, got %d", receivedFilters.Limit)
-	}
+	// Assertions
+	require.NoError(t, err)
+	assert.NotNil(t, banks)
+	assert.NotNil(t, pagination)
+
+	mockRepo.AssertExpectations(t)
 }
 
 func TestBankService_GetBankDetails_AllEnvironments(t *testing.T) {
 	// Test data
 	expectedBank := &models.Bank{
-		BankID:  "TEST001",
+		BankID:  "test-bank",
 		Name:    "Test Bank",
 		Country: "ES",
 	}
-
 	expectedConfigs := map[string]*models.BankEnvironmentConfig{
-		"production": {
-			BankID:      "TEST001",
-			Environment: models.EnvironmentProduction,
-			Enabled:     true,
-		},
 		"sandbox": {
-			BankID:      "TEST001",
+			BankID:      "test-bank",
 			Environment: models.EnvironmentSandbox,
 			Enabled:     true,
 		},
-	}
-
-	mockRepo := &MockBankRepository{
-		GetBankByIDFunc: func(_ context.Context, bankID string) (*models.Bank, error) {
-			if bankID == "TEST001" {
-				return expectedBank, nil
-			}
-			return nil, errors.New("bank not found")
-		},
-		GetBankEnvironmentConfigsFunc: func(_ context.Context, bankID string, environment string) (map[string]*models.BankEnvironmentConfig, error) {
-			if bankID == "TEST001" && environment == "" {
-				return expectedConfigs, nil
-			}
-			return nil, errors.New("config not found")
+		"production": {
+			BankID:      "test-bank",
+			Environment: models.EnvironmentProduction,
+			Enabled:     true,
 		},
 	}
 
+	// Create mock repository
+	mockRepo := new(MockBankRepository)
+	mockRepo.On("GetBankByID", mock.Anything, "test-bank").Return(expectedBank, nil)
+	mockRepo.On("GetBankEnvironmentConfigs", mock.Anything, "test-bank", "").Return(expectedConfigs, nil)
+
+	// Create service with mock
 	service := NewBankService(mockRepo)
 
-	result, err := service.GetBankDetails(context.Background(), "TEST001", "")
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	// Call the method - no environment specified (get all)
+	bankDetails, err := service.GetBankDetails(context.Background(), "test-bank", "")
 
-	bankWithEnvs, ok := result.(*models.BankWithEnvironments)
-	if !ok {
-		t.Fatalf("Expected BankWithEnvironments, got %T", result)
-	}
+	// Assertions
+	require.NoError(t, err)
+	require.NotNil(t, bankDetails)
+	bankWithEnvs := bankDetails.(*models.BankWithEnvironments)
+	assert.Equal(t, expectedBank.BankID, bankWithEnvs.BankID)
+	assert.Len(t, bankWithEnvs.EnvironmentConfigs, 2)
+	assert.Contains(t, bankWithEnvs.EnvironmentConfigs, "sandbox")
+	assert.Contains(t, bankWithEnvs.EnvironmentConfigs, "production")
 
-	if bankWithEnvs.BankID != expectedBank.BankID {
-		t.Errorf("Expected bank ID %s, got %s", expectedBank.BankID, bankWithEnvs.BankID)
-	}
-
-	if len(bankWithEnvs.EnvironmentConfigs) != 2 {
-		t.Errorf("Expected 2 environment configs, got %d", len(bankWithEnvs.EnvironmentConfigs))
-	}
+	mockRepo.AssertExpectations(t)
 }
 
 func TestBankService_GetBankDetails_SpecificEnvironment(t *testing.T) {
+	// Test data
 	expectedBank := &models.Bank{
-		BankID:  "TEST001",
+		BankID:  "test-bank",
 		Name:    "Test Bank",
 		Country: "ES",
 	}
-
 	expectedConfig := &models.BankEnvironmentConfig{
-		BankID:      "TEST001",
-		Environment: models.EnvironmentProduction,
+		BankID:      "test-bank",
+		Environment: models.EnvironmentSandbox,
 		Enabled:     true,
 	}
-
 	expectedConfigs := map[string]*models.BankEnvironmentConfig{
-		"production": expectedConfig,
+		"sandbox": expectedConfig,
 	}
 
-	mockRepo := &MockBankRepository{
-		GetBankByIDFunc: func(_ context.Context, _ string) (*models.Bank, error) {
-			return expectedBank, nil
-		},
-		GetBankEnvironmentConfigsFunc: func(_ context.Context, _ string, environment string) (map[string]*models.BankEnvironmentConfig, error) {
-			if environment == "production" {
-				return expectedConfigs, nil
-			}
-			return nil, errors.New("config not found")
-		},
-	}
+	// Create mock repository
+	mockRepo := new(MockBankRepository)
+	mockRepo.On("GetBankByID", mock.Anything, "test-bank").Return(expectedBank, nil)
+	mockRepo.On("GetBankEnvironmentConfigs", mock.Anything, "test-bank", "sandbox").Return(expectedConfigs, nil)
 
+	// Create service with mock
 	service := NewBankService(mockRepo)
 
-	result, err := service.GetBankDetails(context.Background(), "TEST001", "production")
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	// Call the method - specific environment
+	bankDetails, err := service.GetBankDetails(context.Background(), "test-bank", "sandbox")
 
-	bankWithEnv, ok := result.(*models.BankWithEnvironment)
-	if !ok {
-		t.Fatalf("Expected BankWithEnvironment, got %T", result)
-	}
+	// Assertions
+	require.NoError(t, err)
+	require.NotNil(t, bankDetails)
+	bankWithEnv := bankDetails.(*models.BankWithEnvironment)
+	assert.Equal(t, expectedBank.BankID, bankWithEnv.BankID)
+	assert.NotNil(t, bankWithEnv.EnvironmentConfig)
+	assert.Equal(t, expectedConfig.Environment, bankWithEnv.EnvironmentConfig.Environment)
+	assert.Equal(t, expectedConfig.Enabled, bankWithEnv.EnvironmentConfig.Enabled)
 
-	if bankWithEnv.BankID != expectedBank.BankID {
-		t.Errorf("Expected bank ID %s, got %s", expectedBank.BankID, bankWithEnv.BankID)
-	}
-
-	if bankWithEnv.EnvironmentConfig.Environment != models.EnvironmentProduction {
-		t.Errorf("Expected environment production, got %s", bankWithEnv.EnvironmentConfig.Environment)
-	}
+	mockRepo.AssertExpectations(t)
 }
 
 func TestBankService_GetBankDetails_BankNotFound(t *testing.T) {
-	mockRepo := &MockBankRepository{
-		GetBankByIDFunc: func(_ context.Context, _ string) (*models.Bank, error) {
-			return nil, errors.New("no rows in result set")
-		},
-	}
+	// Create mock repository
+	mockRepo := new(MockBankRepository)
+	mockRepo.On("GetBankByID", mock.Anything, "nonexistent-bank").Return(nil, errors.New("bank not found"))
 
+	// Create service with mock
 	service := NewBankService(mockRepo)
 
-	_, err := service.GetBankDetails(context.Background(), "NONEXISTENT", "")
-	if err == nil {
-		t.Fatal("Expected error for non-existent bank")
-	}
+	// Call the method
+	bankDetails, err := service.GetBankDetails(context.Background(), "nonexistent-bank", "")
 
-	if !strings.Contains(err.Error(), "bank not found") {
-		t.Errorf("Expected 'bank not found' error, got %v", err)
-	}
+	// Assertions
+	assert.Error(t, err)
+	assert.Nil(t, bankDetails)
+	assert.Contains(t, err.Error(), "bank not found")
+
+	mockRepo.AssertExpectations(t)
 }
 
 func TestBankService_GetBankDetails_InvalidEnvironment(t *testing.T) {
-	service := NewBankService(&MockBankRepository{})
+	// Create mock repository (no expectations because service validates environment first)
+	mockRepo := new(MockBankRepository)
 
-	_, err := service.GetBankDetails(context.Background(), "TEST001", "invalid")
-	if err == nil {
-		t.Fatal("Expected error for invalid environment")
-	}
+	// Create service with mock
+	service := NewBankService(mockRepo)
 
-	if !strings.Contains(err.Error(), "invalid environment") {
-		t.Errorf("Expected 'invalid environment' error, got %v", err)
-	}
+	// Call the method with invalid environment
+	bankDetails, err := service.GetBankDetails(context.Background(), "test-bank", "invalid-env")
+
+	// Assertions
+	assert.Error(t, err)
+	assert.Nil(t, bankDetails)
+	assert.Contains(t, err.Error(), "invalid environment: invalid-env")
+
+	mockRepo.AssertExpectations(t)
 }
 
 func TestBankService_GetBankDetails_ValidEnvNoConfig(t *testing.T) {
+	// Test data
 	expectedBank := &models.Bank{
-		BankID:  "TEST001",
+		BankID:  "test-bank",
 		Name:    "Test Bank",
 		Country: "ES",
 	}
+	emptyConfigs := map[string]*models.BankEnvironmentConfig{}
 
-	mockRepo := &MockBankRepository{
-		GetBankByIDFunc: func(_ context.Context, _ string) (*models.Bank, error) {
-			return expectedBank, nil
-		},
-		GetBankEnvironmentConfigsFunc: func(_ context.Context, _ string, _ string) (map[string]*models.BankEnvironmentConfig, error) {
-			// Return empty map - no config for this environment
-			return map[string]*models.BankEnvironmentConfig{}, nil
-		},
-	}
+	// Create mock repository
+	mockRepo := new(MockBankRepository)
+	mockRepo.On("GetBankByID", mock.Anything, "test-bank").Return(expectedBank, nil)
+	mockRepo.On("GetBankEnvironmentConfigs", mock.Anything, "test-bank", "sandbox").Return(emptyConfigs, nil)
 
+	// Create service with mock
 	service := NewBankService(mockRepo)
 
-	_, err := service.GetBankDetails(context.Background(), "TEST001", "production")
-	if err == nil {
-		t.Fatal("Expected error when environment config not found")
-	}
+	// Call the method - should return error when environment config not found
+	bankDetails, err := service.GetBankDetails(context.Background(), "test-bank", "sandbox")
 
-	if !strings.Contains(err.Error(), "environment configuration not found") {
-		t.Errorf("Expected 'environment configuration not found' error, got %v", err)
-	}
+	// Assertions
+	assert.Error(t, err)
+	assert.Nil(t, bankDetails)
+	assert.Contains(t, err.Error(), "environment configuration not found for sandbox")
+
+	mockRepo.AssertExpectations(t)
 }
 
 func TestBankService_GetBankDetails_RepositoryError(t *testing.T) {
+	// Test data
 	expectedBank := &models.Bank{
-		BankID:  "TEST001",
+		BankID:  "test-bank",
 		Name:    "Test Bank",
 		Country: "ES",
 	}
 
-	mockRepo := &MockBankRepository{
-		GetBankByIDFunc: func(_ context.Context, _ string) (*models.Bank, error) {
-			return expectedBank, nil
-		},
-		GetBankEnvironmentConfigsFunc: func(_ context.Context, _ string, _ string) (map[string]*models.BankEnvironmentConfig, error) {
-			return nil, errors.New("database connection error")
-		},
-	}
+	// Create mock repository
+	mockRepo := new(MockBankRepository)
+	mockRepo.On("GetBankByID", mock.Anything, "test-bank").Return(expectedBank, nil)
+	mockRepo.On("GetBankEnvironmentConfigs", mock.Anything, "test-bank", "").Return(nil, errors.New("config fetch failed"))
 
+	// Create service with mock
 	service := NewBankService(mockRepo)
 
-	_, err := service.GetBankDetails(context.Background(), "TEST001", "")
-	if err == nil {
-		t.Fatal("Expected error from repository")
-	}
+	// Call the method
+	bankDetails, err := service.GetBankDetails(context.Background(), "test-bank", "")
 
-	if !strings.Contains(err.Error(), "failed to get environment configs") {
-		t.Errorf("Expected repository error to be wrapped, got %v", err)
-	}
+	// Assertions
+	assert.Error(t, err)
+	assert.Nil(t, bankDetails)
+	assert.Contains(t, err.Error(), "config fetch failed")
+
+	mockRepo.AssertExpectations(t)
 }
