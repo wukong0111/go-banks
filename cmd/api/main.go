@@ -54,6 +54,11 @@ func run() error {
 	bankService := services.NewBankService(bankRepo)
 	bankHandler := handlers.NewBankHandler(bankService)
 
+	// Initialize bank creation dependencies
+	bankWriter := repository.NewPostgresBankWriter(dbPool)
+	bankCreatorService := services.NewBankCreatorService(bankWriter)
+	bankCreatorHandler := handlers.NewBankCreatorHandler(bankCreatorService)
+
 	// Initialize JWT service and auth middleware
 	jwtExpiry, err := time.ParseDuration(cfg.JWT.Expiry)
 	if err != nil {
@@ -81,6 +86,10 @@ func run() error {
 	api.GET("/banks/:bankId/details",
 		authMiddleware.RequireAuth("banks:read"),
 		bankHandler.GetBankDetails)
+	// Bank creation endpoint requires banks:write permission
+	api.POST("/banks",
+		authMiddleware.RequireAuth("banks:write"),
+		bankCreatorHandler.CreateBank)
 
 	log.Printf("Server starting on :%d", cfg.Port)
 	if err := r.Run(":8080"); err != nil {

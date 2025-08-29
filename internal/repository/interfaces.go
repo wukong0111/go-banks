@@ -22,3 +22,9 @@ type BankRepository interface {
 	GetBankByID(ctx context.Context, bankID string) (*models.Bank, error)
 	GetBankEnvironmentConfigs(ctx context.Context, bankID string, environment string) (map[string]*models.BankEnvironmentConfig, error)
 }
+
+// BankWriter defines the methods for creating banks
+type BankWriter interface {
+	CreateBank(ctx context.Context, bank *models.Bank) error
+	CreateBankWithEnvironments(ctx context.Context, bank *models.Bank, configs []*models.BankEnvironmentConfig) error
+}
