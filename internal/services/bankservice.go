@@ -59,7 +59,7 @@ func (s *BankService) normalizeFilters(filters *repository.BankFilters) {
 	}
 }
 
-func (s *BankService) GetBankDetails(ctx context.Context, bankID, environment string) (any, error) {
+func (s *BankService) GetBankDetails(ctx context.Context, bankID, environment string) (models.BankDetails, error) {
 	// If specific environment is requested, validate it first
 	if environment != "" {
 		if !s.isValidEnvironment(environment) {
