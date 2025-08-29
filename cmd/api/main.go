@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -19,6 +20,12 @@ import (
 )
 
 func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run() error {
 	// Load .env file if it exists
 	if err := godotenv.Load(); err != nil {
 		log.Printf("Warning: Could not load .env file: %v", err)
@@ -27,19 +34,19 @@ func main() {
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		return fmt.Errorf("failed to load config: %w", err)
 	}
 
 	// Connect to database
 	dbPool, err := pgxpool.New(context.Background(), cfg.Database.ConnectionString())
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		return fmt.Errorf("failed to connect to database: %w", err)
 	}
 	defer dbPool.Close()
 
 	// Test database connection
 	if err := dbPool.Ping(context.Background()); err != nil {
-		log.Fatalf("Failed to ping database: %v", err)
+		return fmt.Errorf("failed to ping database: %w", err)
 	}
 
 	// Initialize dependencies
@@ -50,7 +57,7 @@ func main() {
 	// Initialize JWT service and auth middleware
 	jwtExpiry, err := time.ParseDuration(cfg.JWT.Expiry)
 	if err != nil {
-		log.Fatalf("Invalid JWT expiry duration: %v", err)
+		return fmt.Errorf("invalid JWT expiry duration: %w", err)
 	}
 	jwtService := auth.NewJWTService(cfg.JWT.Secret, jwtExpiry)
 	authMiddleware := middleware.NewAuthMiddleware(jwtService)
@@ -67,18 +74,18 @@ func main() {
 
 	// API routes with authentication
 	api := r.Group("/api")
-	{
-		// Bank endpoints require banks:read permission
-		api.GET("/banks",
-			authMiddleware.RequireAuth("banks:read"),
-			bankHandler.GetBanks)
-		api.GET("/banks/:bankId/details",
-			authMiddleware.RequireAuth("banks:read"),
-			bankHandler.GetBankDetails)
-	}
+	// Bank endpoints require banks:read permission
+	api.GET("/banks",
+		authMiddleware.RequireAuth("banks:read"),
+		bankHandler.GetBanks)
+	api.GET("/banks/:bankId/details",
+		authMiddleware.RequireAuth("banks:read"),
+		bankHandler.GetBankDetails)
 
 	log.Printf("Server starting on :%d", cfg.Port)
 	if err := r.Run(":8080"); err != nil {
-		log.Fatal("Failed to start server:", err)
+		return fmt.Errorf("failed to start server: %w", err)
 	}
+
+	return nil
 }

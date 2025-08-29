@@ -86,20 +86,12 @@ func (c *Claims) HasPermission(required string) bool {
 
 // HasAnyPermission checks if the claims contain any of the required permissions
 func (c *Claims) HasAnyPermission(required []string) bool {
-	for _, req := range required {
-		if c.HasPermission(req) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(required, c.HasPermission)
 }
 
 // HasAllPermissions checks if the claims contain all of the required permissions
 func (c *Claims) HasAllPermissions(required []string) bool {
-	for _, req := range required {
-		if !c.HasPermission(req) {
-			return false
-		}
-	}
-	return true
+	return !slices.ContainsFunc(required, func(req string) bool {
+		return !c.HasPermission(req)
+	})
 }

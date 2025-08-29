@@ -25,7 +25,7 @@ func NewBankHandler(bankService *services.BankService) *BankHandler {
 
 func (h *BankHandler) GetBanks(c *gin.Context) {
 	// Parse query parameters - no defaults or validation, just HTTP parsing
-	filters := repository.BankFilters{
+	filters := &repository.BankFilters{
 		Environment: c.Query("env"),
 		Name:        c.Query("name"),
 		API:         c.Query("api"),
@@ -109,21 +109,22 @@ func (h *BankHandler) GetBankDetails(c *gin.Context) {
 
 		// Handle specific error cases
 		errorMessage := err.Error()
-		if strings.Contains(errorMessage, "bank not found") {
+		switch {
+		case strings.Contains(errorMessage, "bank not found"):
 			response := models.APIResponse[any]{
 				Success: false,
 				Error:   stringPtr("Bank not found"),
 			}
 			c.JSON(http.StatusNotFound, response)
 			return
-		} else if strings.Contains(errorMessage, "invalid environment") {
+		case strings.Contains(errorMessage, "invalid environment"):
 			response := models.APIResponse[any]{
 				Success: false,
 				Error:   stringPtr(errorMessage),
 			}
 			c.JSON(http.StatusBadRequest, response)
 			return
-		} else if strings.Contains(errorMessage, "environment configuration not found") {
+		case strings.Contains(errorMessage, "environment configuration not found"):
 			response := models.APIResponse[any]{
 				Success: false,
 				Error:   stringPtr(errorMessage),

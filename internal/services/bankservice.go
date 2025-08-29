@@ -2,7 +2,9 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -21,16 +23,16 @@ func NewBankService(bankRepo repository.BankRepository) *BankService {
 	}
 }
 
-func (s *BankService) GetBanks(ctx context.Context, filters repository.BankFilters) ([]models.Bank, *models.Pagination, error) {
+func (s *BankService) GetBanks(ctx context.Context, filters *repository.BankFilters) ([]models.Bank, *models.Pagination, error) {
 	// Apply business rules and validation
-	normalizedFilters := s.normalizeFilters(filters)
+	s.normalizeFilters(filters)
 
 	// Delegate to repository
-	return s.bankRepo.GetBanks(ctx, normalizedFilters)
+	return s.bankRepo.GetBanks(ctx, filters)
 }
 
 // normalizeFilters applies business rules to filter parameters
-func (s *BankService) normalizeFilters(filters repository.BankFilters) repository.BankFilters {
+func (s *BankService) normalizeFilters(filters *repository.BankFilters) {
 	const (
 		DefaultPage        = 1
 		DefaultLimit       = 20
@@ -55,11 +57,9 @@ func (s *BankService) normalizeFilters(filters repository.BankFilters) repositor
 	} else if filters.Limit > MaxLimit {
 		filters.Limit = MaxLimit
 	}
-
-	return filters
 }
 
-func (s *BankService) GetBankDetails(ctx context.Context, bankID string, environment string) (any, error) {
+func (s *BankService) GetBankDetails(ctx context.Context, bankID, environment string) (any, error) {
 	// If specific environment is requested, validate it first
 	if environment != "" {
 		if !s.isValidEnvironment(environment) {
@@ -71,7 +71,7 @@ func (s *BankService) GetBankDetails(ctx context.Context, bankID string, environ
 	bank, err := s.bankRepo.GetBankByID(ctx, bankID)
 	if err != nil {
 		if err == pgx.ErrNoRows || strings.Contains(err.Error(), "no rows in result set") {
-			return nil, fmt.Errorf("bank not found")
+			return nil, errors.New("bank not found")
 		}
 		return nil, fmt.Errorf("failed to get bank: %w", err)
 	}
@@ -106,10 +106,5 @@ func (s *BankService) GetBankDetails(ctx context.Context, bankID string, environ
 // isValidEnvironment validates if the provided environment is valid
 func (s *BankService) isValidEnvironment(env string) bool {
 	validEnvironments := []string{"sandbox", "production", "uat", "test"}
-	for _, validEnv := range validEnvironments {
-		if env == validEnv {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validEnvironments, env)
 }

@@ -18,7 +18,7 @@ func NewPostgresBankRepository(db *pgxpool.Pool) *PostgresBankRepository {
 	return &PostgresBankRepository{db: db}
 }
 
-func (r *PostgresBankRepository) GetBanks(ctx context.Context, filters BankFilters) ([]models.Bank, *models.Pagination, error) {
+func (r *PostgresBankRepository) GetBanks(ctx context.Context, filters *BankFilters) ([]models.Bank, *models.Pagination, error) {
 	// Build WHERE clause and arguments
 	var whereConditions []string
 	var args []any
@@ -59,7 +59,7 @@ func (r *PostgresBankRepository) GetBanks(ctx context.Context, filters BankFilte
 	}
 
 	// Count total records
-	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM banks b %s", whereClause)
+	countQuery := "SELECT COUNT(*) FROM banks b " + whereClause
 	var total int
 	if err := r.db.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
 		return nil, nil, fmt.Errorf("failed to count banks: %w", err)
@@ -152,7 +152,7 @@ func (r *PostgresBankRepository) GetBankByID(ctx context.Context, bankID string)
 	return &bank, nil
 }
 
-func (r *PostgresBankRepository) GetBankEnvironmentConfigs(ctx context.Context, bankID string, environment string) (map[string]*models.BankEnvironmentConfig, error) {
+func (r *PostgresBankRepository) GetBankEnvironmentConfigs(ctx context.Context, bankID, environment string) (map[string]*models.BankEnvironmentConfig, error) {
 	query := `
 		SELECT 
 			bank_id, environment, enabled, blocked, blocked_text, risky, risky_message,

@@ -12,12 +12,12 @@ import (
 
 // MockBankRepository implements the BankRepository interface for testing
 type MockBankRepository struct {
-	GetBanksFunc                  func(ctx context.Context, filters repository.BankFilters) ([]models.Bank, *models.Pagination, error)
+	GetBanksFunc                  func(ctx context.Context, filters *repository.BankFilters) ([]models.Bank, *models.Pagination, error)
 	GetBankByIDFunc               func(ctx context.Context, bankID string) (*models.Bank, error)
 	GetBankEnvironmentConfigsFunc func(ctx context.Context, bankID string, environment string) (map[string]*models.BankEnvironmentConfig, error)
 }
 
-func (m *MockBankRepository) GetBanks(ctx context.Context, filters repository.BankFilters) ([]models.Bank, *models.Pagination, error) {
+func (m *MockBankRepository) GetBanks(ctx context.Context, filters *repository.BankFilters) ([]models.Bank, *models.Pagination, error) {
 	if m.GetBanksFunc != nil {
 		return m.GetBanksFunc(ctx, filters)
 	}
@@ -31,7 +31,7 @@ func (m *MockBankRepository) GetBankByID(ctx context.Context, bankID string) (*m
 	return nil, nil
 }
 
-func (m *MockBankRepository) GetBankEnvironmentConfigs(ctx context.Context, bankID string, environment string) (map[string]*models.BankEnvironmentConfig, error) {
+func (m *MockBankRepository) GetBankEnvironmentConfigs(ctx context.Context, bankID, environment string) (map[string]*models.BankEnvironmentConfig, error) {
 	if m.GetBankEnvironmentConfigsFunc != nil {
 		return m.GetBankEnvironmentConfigsFunc(ctx, bankID, environment)
 	}
@@ -61,7 +61,7 @@ func TestBankService_GetBanks(t *testing.T) {
 
 	// Create mock repository
 	mockRepo := &MockBankRepository{
-		GetBanksFunc: func(_ context.Context, _ repository.BankFilters) ([]models.Bank, *models.Pagination, error) {
+		GetBanksFunc: func(_ context.Context, _ *repository.BankFilters) ([]models.Bank, *models.Pagination, error) {
 			return expectedBanks, expectedPagination, nil
 		},
 	}
@@ -70,7 +70,7 @@ func TestBankService_GetBanks(t *testing.T) {
 	service := NewBankService(mockRepo)
 
 	// Test filters
-	filters := repository.BankFilters{
+	filters := &repository.BankFilters{
 		Environment: "sandbox",
 		Page:        1,
 		Limit:       20,
@@ -101,7 +101,7 @@ func TestBankService_GetBanks_RepositoryError(t *testing.T) {
 	// Create mock repository that returns error
 	expectedError := errors.New("database connection failed")
 	mockRepo := &MockBankRepository{
-		GetBanksFunc: func(_ context.Context, _ repository.BankFilters) ([]models.Bank, *models.Pagination, error) {
+		GetBanksFunc: func(_ context.Context, _ *repository.BankFilters) ([]models.Bank, *models.Pagination, error) {
 			return nil, nil, expectedError
 		},
 	}
@@ -110,7 +110,7 @@ func TestBankService_GetBanks_RepositoryError(t *testing.T) {
 	service := NewBankService(mockRepo)
 
 	// Test filters
-	filters := repository.BankFilters{
+	filters := &repository.BankFilters{
 		Environment: "sandbox",
 		Page:        1,
 		Limit:       20,
@@ -147,7 +147,7 @@ func TestBankService_GetBanks_EmptyResults(t *testing.T) {
 	}
 
 	mockRepo := &MockBankRepository{
-		GetBanksFunc: func(_ context.Context, _ repository.BankFilters) ([]models.Bank, *models.Pagination, error) {
+		GetBanksFunc: func(_ context.Context, _ *repository.BankFilters) ([]models.Bank, *models.Pagination, error) {
 			return []models.Bank{}, expectedPagination, nil
 		},
 	}
@@ -156,7 +156,7 @@ func TestBankService_GetBanks_EmptyResults(t *testing.T) {
 	service := NewBankService(mockRepo)
 
 	// Test filters
-	filters := repository.BankFilters{
+	filters := &repository.BankFilters{
 		Environment: "production",
 		Country:     "XX", // Non-existent country
 		Page:        1,
@@ -182,10 +182,10 @@ func TestBankService_GetBanks_EmptyResults(t *testing.T) {
 
 func TestBankService_GetBanks_FilterValidation(t *testing.T) {
 	// Track what filters were passed to repository
-	var receivedFilters repository.BankFilters
+	var receivedFilters *repository.BankFilters
 
 	mockRepo := &MockBankRepository{
-		GetBanksFunc: func(_ context.Context, filters repository.BankFilters) ([]models.Bank, *models.Pagination, error) {
+		GetBanksFunc: func(_ context.Context, filters *repository.BankFilters) ([]models.Bank, *models.Pagination, error) {
 			receivedFilters = filters
 			return []models.Bank{}, &models.Pagination{}, nil
 		},
@@ -195,7 +195,7 @@ func TestBankService_GetBanks_FilterValidation(t *testing.T) {
 	service := NewBankService(mockRepo)
 
 	// Test filters with specific values
-	expectedFilters := repository.BankFilters{
+	expectedFilters := &repository.BankFilters{
 		Environment: "uat",
 		Name:        "Santander",
 		API:         "OpenBanking",
@@ -240,10 +240,10 @@ func TestBankService_GetBanks_FilterValidation(t *testing.T) {
 
 func TestBankService_GetBanks_BusinessRulesValidation(t *testing.T) {
 	// Track what filters were passed to repository after normalization
-	var receivedFilters repository.BankFilters
+	var receivedFilters *repository.BankFilters
 
 	mockRepo := &MockBankRepository{
-		GetBanksFunc: func(_ context.Context, filters repository.BankFilters) ([]models.Bank, *models.Pagination, error) {
+		GetBanksFunc: func(_ context.Context, filters *repository.BankFilters) ([]models.Bank, *models.Pagination, error) {
 			receivedFilters = filters
 			return []models.Bank{}, &models.Pagination{}, nil
 		},
@@ -252,7 +252,7 @@ func TestBankService_GetBanks_BusinessRulesValidation(t *testing.T) {
 	service := NewBankService(mockRepo)
 
 	// Test with invalid/empty values that should be normalized
-	inputFilters := repository.BankFilters{
+	inputFilters := &repository.BankFilters{
 		Environment: "", // Should become "all"
 		Page:        0,  // Should become 1
 		Limit:       0,  // Should become 20
@@ -278,10 +278,10 @@ func TestBankService_GetBanks_BusinessRulesValidation(t *testing.T) {
 }
 
 func TestBankService_GetBanks_MaxLimitEnforcement(t *testing.T) {
-	var receivedFilters repository.BankFilters
+	var receivedFilters *repository.BankFilters
 
 	mockRepo := &MockBankRepository{
-		GetBanksFunc: func(_ context.Context, filters repository.BankFilters) ([]models.Bank, *models.Pagination, error) {
+		GetBanksFunc: func(_ context.Context, filters *repository.BankFilters) ([]models.Bank, *models.Pagination, error) {
 			receivedFilters = filters
 			return []models.Bank{}, &models.Pagination{}, nil
 		},
@@ -290,7 +290,7 @@ func TestBankService_GetBanks_MaxLimitEnforcement(t *testing.T) {
 	service := NewBankService(mockRepo)
 
 	// Test with limit exceeding maximum
-	inputFilters := repository.BankFilters{
+	inputFilters := &repository.BankFilters{
 		Limit: 150, // Should be capped to 100
 	}
 

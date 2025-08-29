@@ -50,7 +50,7 @@ func (ms *MigrationService) Steps(n int) error {
 	return nil
 }
 
-func (ms *MigrationService) Version() (uint, bool, error) {
+func (ms *MigrationService) Version() (version uint, dirty bool, err error) {
 	return ms.migrate.Version()
 }
 

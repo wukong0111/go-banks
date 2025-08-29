@@ -18,7 +18,7 @@ type BankFilters struct {
 
 // BankRepository defines the methods that a bank repository must implement
 type BankRepository interface {
-	GetBanks(ctx context.Context, filters BankFilters) ([]models.Bank, *models.Pagination, error)
+	GetBanks(ctx context.Context, filters *BankFilters) ([]models.Bank, *models.Pagination, error)
 	GetBankByID(ctx context.Context, bankID string) (*models.Bank, error)
 	GetBankEnvironmentConfigs(ctx context.Context, bankID string, environment string) (map[string]*models.BankEnvironmentConfig, error)
 }

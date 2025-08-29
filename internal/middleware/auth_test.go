@@ -33,7 +33,7 @@ func TestAuthMiddleware_RequireAuth_ValidToken(t *testing.T) {
 	})
 
 	// Create request with valid token
-	req, _ := http.NewRequest("GET", "/test", nil)
+	req, _ := http.NewRequest("GET", "/test", http.NoBody)
 	req.Header.Set("Authorization", "Bearer "+token)
 
 	// Record response
@@ -58,7 +58,7 @@ func TestAuthMiddleware_RequireAuth_MissingAuthorizationHeader(t *testing.T) {
 	})
 
 	// Create request without Authorization header
-	req, _ := http.NewRequest("GET", "/test", nil)
+	req, _ := http.NewRequest("GET", "/test", http.NoBody)
 
 	// Record response
 	w := httptest.NewRecorder()
@@ -94,7 +94,7 @@ func TestAuthMiddleware_RequireAuth_InvalidBearerFormat(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			req, _ := http.NewRequest("GET", "/test", nil)
+			req, _ := http.NewRequest("GET", "/test", http.NoBody)
 			req.Header.Set("Authorization", tc.header)
 
 			w := httptest.NewRecorder()
@@ -119,7 +119,7 @@ func TestAuthMiddleware_RequireAuth_InvalidToken(t *testing.T) {
 	})
 
 	// Test with invalid token
-	req, _ := http.NewRequest("GET", "/test", nil)
+	req, _ := http.NewRequest("GET", "/test", http.NoBody)
 	req.Header.Set("Authorization", "Bearer invalid-token")
 
 	// Record response
@@ -153,7 +153,7 @@ func TestAuthMiddleware_RequireAuth_ExpiredToken(t *testing.T) {
 	})
 
 	// Test with expired token
-	req, _ := http.NewRequest("GET", "/test", nil)
+	req, _ := http.NewRequest("GET", "/test", http.NoBody)
 	req.Header.Set("Authorization", "Bearer "+token)
 
 	// Record response
@@ -184,7 +184,7 @@ func TestAuthMiddleware_RequireAuth_InsufficientPermissions(t *testing.T) {
 	})
 
 	// Test with insufficient permissions
-	req, _ := http.NewRequest("GET", "/test", nil)
+	req, _ := http.NewRequest("GET", "/test", http.NoBody)
 	req.Header.Set("Authorization", "Bearer "+token)
 
 	// Record response
@@ -215,7 +215,7 @@ func TestAuthMiddleware_RequireAuth_MultiplePermissions(t *testing.T) {
 	})
 
 	// Test - should pass because token has read permission
-	req, _ := http.NewRequest("GET", "/test", nil)
+	req, _ := http.NewRequest("GET", "/test", http.NoBody)
 	req.Header.Set("Authorization", "Bearer "+token)
 
 	// Record response
@@ -246,7 +246,7 @@ func TestAuthMiddleware_RequireAuth_NoPermissionsRequired(t *testing.T) {
 	})
 
 	// Test - should pass with valid token regardless of permissions
-	req, _ := http.NewRequest("GET", "/test", nil)
+	req, _ := http.NewRequest("GET", "/test", http.NoBody)
 	req.Header.Set("Authorization", "Bearer "+token)
 
 	// Record response
@@ -294,7 +294,7 @@ func TestAuthMiddleware_GetClaims(t *testing.T) {
 	})
 
 	// Create request with valid token
-	req, _ := http.NewRequest("GET", "/test", nil)
+	req, _ := http.NewRequest("GET", "/test", http.NoBody)
 	req.Header.Set("Authorization", "Bearer "+token)
 
 	// Record response
@@ -338,7 +338,7 @@ func TestAuthMiddleware_GetPermissions(t *testing.T) {
 	})
 
 	// Create request with valid token
-	req, _ := http.NewRequest("GET", "/test", nil)
+	req, _ := http.NewRequest("GET", "/test", http.NoBody)
 	req.Header.Set("Authorization", "Bearer "+token)
 
 	// Record response

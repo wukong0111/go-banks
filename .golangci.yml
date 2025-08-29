@@ -11,7 +11,30 @@ linters:
     - misspell
     - revive
     - unconvert
+    - gocritic
+    - perfsprint
+    - sloglint
+    - ineffassign
+    - unused
+    - prealloc
+    - staticcheck
   settings:
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - style
+        - performance
+      settings:
+        rangeValCopy:
+          sizeThreshold: 32
+        hugeParam:
+          sizeThreshold: 80
+    perfsprint:
+      int-conversion: true
+      err-error: true
+      errorf: true
+      sprintf1: true
+      strconcat: true
     revive:
       severity: warning
       rules:

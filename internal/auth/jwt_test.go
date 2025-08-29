@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"slices"
 	"testing"
 	"time"
 
@@ -217,10 +218,5 @@ func TestJWTService_TokenStructure(t *testing.T) {
 
 // Helper function to check if slice contains string
 func contains(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(slice, item)
 }

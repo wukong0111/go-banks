@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -159,7 +160,7 @@ func showStatus(ctx context.Context, cfg *config.DatabaseConfig) error {
 	for _, table := range tables {
 		var count int
 		// #nosec G201 - table names are hardcoded, no injection risk
-		query := fmt.Sprintf("SELECT COUNT(*) FROM %s", table)
+		query := "SELECT COUNT(*) FROM " + table
 		if err := db.QueryRowContext(ctx, query).Scan(&count); err != nil {
 			return fmt.Errorf("failed to count records in %s: %w", table, err)
 		}
@@ -183,7 +184,7 @@ func checkMigrationsApplied(ctx context.Context, db *sql.DB) error {
 	}
 
 	if !exists {
-		return fmt.Errorf("migrations have not been applied yet. Run 'make migrate-up' first")
+		return errors.New("migrations have not been applied yet. Run 'make migrate-up' first")
 	}
 
 	return nil
@@ -220,7 +221,7 @@ func executeSQLFile(ctx context.Context, db *sql.DB, filePath string, debug bool
 
 	// Remove comments and empty lines first
 	lines := strings.Split(string(content), "\n")
-	var cleanLines []string
+	cleanLines := make([]string, 0, len(lines))
 
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
