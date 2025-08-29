@@ -17,6 +17,7 @@ import (
 	"github.com/wukong0111/go-banks/internal/auth"
 	"github.com/wukong0111/go-banks/internal/config"
 	"github.com/wukong0111/go-banks/internal/handlers"
+	"github.com/wukong0111/go-banks/internal/logger"
 	"github.com/wukong0111/go-banks/internal/middleware"
 	"github.com/wukong0111/go-banks/internal/repository"
 	"github.com/wukong0111/go-banks/internal/services"
@@ -40,6 +41,28 @@ func run() error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
+	// Setup logger
+	loggerCfg := &logger.Config{
+		Level:       cfg.Logger.Level,
+		Outputs:     cfg.Logger.Outputs,
+		JSONFile:    cfg.Logger.JSONFile,
+		TextFile:    cfg.Logger.TextFile,
+		AddSource:   cfg.Logger.AddSource,
+		MaxFileSize: cfg.Logger.MaxFileSize,
+	}
+
+	appLogger, err := logger.SetupLogger(loggerCfg)
+	if err != nil {
+		return fmt.Errorf("failed to setup logger: %w", err)
+	}
+
+	appLogger.Info("application starting",
+		"version", "v1.0.0",
+		"port", cfg.Port,
+		"log_level", cfg.Logger.Level,
+		"log_outputs", cfg.Logger.Outputs,
+	)
+
 	// Connect to database
 	dbPool, err := pgxpool.New(context.Background(), cfg.Database.ConnectionString())
 	if err != nil {
@@ -51,6 +74,8 @@ func run() error {
 	if err := dbPool.Ping(context.Background()); err != nil {
 		return fmt.Errorf("failed to ping database: %w", err)
 	}
+
+	appLogger.Info("database connected successfully")
 
 	// Initialize dependencies
 	bankRepo := repository.NewPostgresBankRepository(dbPool)
@@ -72,6 +97,9 @@ func run() error {
 
 	// Setup Gin router
 	r := gin.Default()
+
+	// Add request logging middleware
+	r.Use(logger.RequestLogger(appLogger))
 
 	// Health and readiness endpoints
 	r.GET("/health", healthHandler())
@@ -102,9 +130,9 @@ func run() error {
 
 	// Start server in a goroutine
 	go func() {
-		log.Printf("Server starting on :%d", cfg.Port)
+		appLogger.Info("HTTP server starting", "addr", srv.Addr)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Failed to start server: %v", err)
+			appLogger.Error("server startup failed", "error", err)
 		}
 	}()
 
@@ -114,20 +142,20 @@ func run() error {
 
 	// Block until signal received
 	sig := <-quit
-	log.Printf("Received signal: %v. Starting graceful shutdown...", sig)
+	appLogger.Info("shutdown signal received", "signal", sig.String())
 
 	// Create context with timeout for graceful shutdown
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer shutdownCancel()
 
 	// Shutdown server gracefully
-	log.Println("Shutting down HTTP server...")
+	appLogger.Info("initiating graceful shutdown")
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		log.Printf("Server forced to shutdown: %v", err)
+		appLogger.Error("forced server shutdown", "error", err)
 		return fmt.Errorf("server shutdown failed: %w", err)
 	}
 
-	log.Println("Server shutdown completed gracefully")
+	appLogger.Info("graceful shutdown completed successfully")
 	return nil
 }
 

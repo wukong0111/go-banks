@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 )
 
 type Config struct {
 	Port     int             `json:"port"`
 	Database *DatabaseConfig `json:"database"`
 	JWT      *JWTConfig      `json:"jwt"`
+	Logger   *LoggerConfig   `json:"logger"`
 	APIKey   string          `json:"api_key"`
 }
 
@@ -27,6 +29,15 @@ type JWTConfig struct {
 	Expiry string `json:"expiry"`
 }
 
+type LoggerConfig struct {
+	Level       string   `json:"level"`
+	Outputs     []string `json:"outputs"`
+	JSONFile    string   `json:"json_file,omitempty"`
+	TextFile    string   `json:"text_file,omitempty"`
+	AddSource   bool     `json:"add_source"`
+	MaxFileSize int64    `json:"max_file_size"`
+}
+
 func Load() (*Config, error) {
 	config := &Config{
 		Port:   getEnvAsInt("PORT", 8080),
@@ -42,6 +53,14 @@ func Load() (*Config, error) {
 		JWT: &JWTConfig{
 			Secret: getEnv("JWT_SECRET", "your-super-secret-jwt-key"),
 			Expiry: getEnv("JWT_EXPIRY", "24h"),
+		},
+		Logger: &LoggerConfig{
+			Level:       getEnv("LOG_LEVEL", "info"),
+			Outputs:     parseLogOutputs(getEnv("LOG_OUTPUTS", "console")),
+			JSONFile:    getEnv("LOG_JSON_FILE", ""),
+			TextFile:    getEnv("LOG_TEXT_FILE", ""),
+			AddSource:   getEnvAsBool("LOG_ADD_SOURCE", false),
+			MaxFileSize: getEnvAsInt64("LOG_MAX_FILE_SIZE", 100*1024*1024), // 100MB
 		},
 	}
 
@@ -67,4 +86,34 @@ func getEnvAsInt(key string, defaultValue int) int {
 		}
 	}
 	return defaultValue
+}
+
+func getEnvAsInt64(key string, defaultValue int64) int64 {
+	if value := os.Getenv(key); value != "" {
+		if intValue, err := strconv.ParseInt(value, 10, 64); err == nil {
+			return intValue
+		}
+	}
+	return defaultValue
+}
+
+func getEnvAsBool(key string, defaultValue bool) bool {
+	if value := os.Getenv(key); value != "" {
+		if boolValue, err := strconv.ParseBool(value); err == nil {
+			return boolValue
+		}
+	}
+	return defaultValue
+}
+
+func parseLogOutputs(outputsStr string) []string {
+	if outputsStr == "" {
+		return []string{"console"}
+	}
+
+	outputs := strings.Split(outputsStr, ",")
+	for i, output := range outputs {
+		outputs[i] = strings.TrimSpace(output)
+	}
+	return outputs
 }

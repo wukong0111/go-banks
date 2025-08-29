@@ -1,13 +1,13 @@
 package handlers
 
 import (
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/wukong0111/go-banks/internal/logger"
 	"github.com/wukong0111/go-banks/internal/models"
 	"github.com/wukong0111/go-banks/internal/repository"
 	"github.com/wukong0111/go-banks/internal/services"
@@ -68,7 +68,12 @@ func (h *BankHandler) GetBanks(c *gin.Context) {
 	// Get banks from service
 	banks, pagination, err := h.bankService.GetBanks(c.Request.Context(), filters)
 	if err != nil {
-		log.Printf("Error getting banks: %v", err)
+		if log, ok := logger.GetLogger(c); ok {
+			log.Error("failed to retrieve banks",
+				"error", err,
+				"filters", filters,
+			)
+		}
 		response := models.APIResponse[any]{
 			Success: false,
 			Error:   stringPtr("Failed to retrieve banks"),
@@ -105,7 +110,13 @@ func (h *BankHandler) GetBankDetails(c *gin.Context) {
 	// Get bank details from service
 	bankDetails, err := h.bankService.GetBankDetails(c.Request.Context(), bankID, environment)
 	if err != nil {
-		log.Printf("Error getting bank details for ID %s: %v", bankID, err)
+		if log, ok := logger.GetLogger(c); ok {
+			log.Error("failed to retrieve bank details",
+				"error", err,
+				"bank_id", bankID,
+				"environment", environment,
+			)
+		}
 
 		// Handle specific error cases
 		errorMessage := err.Error()
