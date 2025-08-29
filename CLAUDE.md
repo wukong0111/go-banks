@@ -320,3 +320,9 @@ type APIResponse[T any] struct {
 - Migrations are versioned and sequential (001, 002, 003, 004)
 - Seeds depend on migrations being current
 - Use `make db-reset` for clean slate during development
+
+**Server Operations:**
+- **Graceful shutdown**: Server handles SIGTERM/SIGINT properly for zero-downtime deployments
+- **Health checks**: `/health` for liveness probe, `/ready` for readiness probe with DB connectivity check
+- **Timeouts configured**: 15s read/write, 60s idle, 30s graceful shutdown
+- **Production ready**: Compatible with Kubernetes, Docker Swarm, and other container orchestrators

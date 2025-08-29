@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -70,12 +73,9 @@ func run() error {
 	// Setup Gin router
 	r := gin.Default()
 
-	// Health check endpoint
-	r.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"status": "ok",
-		})
-	})
+	// Health and readiness endpoints
+	r.GET("/health", healthHandler())
+	r.GET("/ready", readinessHandler(dbPool))
 
 	// API routes with authentication
 	api := r.Group("/api")
@@ -91,10 +91,77 @@ func run() error {
 		authMiddleware.RequireAuth("banks:write"),
 		bankCreatorHandler.CreateBank)
 
-	log.Printf("Server starting on :%d", cfg.Port)
-	if err := r.Run(":8080"); err != nil {
-		return fmt.Errorf("failed to start server: %w", err)
+	// Create HTTP server with timeouts
+	srv := &http.Server{
+		Addr:         fmt.Sprintf(":%d", cfg.Port),
+		Handler:      r,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	}
 
+	// Start server in a goroutine
+	go func() {
+		log.Printf("Server starting on :%d", cfg.Port)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Failed to start server: %v", err)
+		}
+	}()
+
+	// Create channel to listen for interrupt signals
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	// Block until signal received
+	sig := <-quit
+	log.Printf("Received signal: %v. Starting graceful shutdown...", sig)
+
+	// Create context with timeout for graceful shutdown
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer shutdownCancel()
+
+	// Shutdown server gracefully
+	log.Println("Shutting down HTTP server...")
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("Server forced to shutdown: %v", err)
+		return fmt.Errorf("server shutdown failed: %w", err)
+	}
+
+	log.Println("Server shutdown completed gracefully")
 	return nil
+}
+
+// healthHandler returns a basic health check endpoint
+func healthHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"status":    "ok",
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
+		})
+	}
+}
+
+// readinessHandler returns a readiness probe that checks database connectivity
+func readinessHandler(dbPool *pgxpool.Pool) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+		defer cancel()
+
+		// Check database connection
+		if err := dbPool.Ping(ctx); err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"status":    "not ready",
+				"reason":    "database connection failed",
+				"error":     err.Error(),
+				"timestamp": time.Now().UTC().Format(time.RFC3339),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"status":    "ready",
+			"database":  "connected",
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
+		})
+	}
 }
