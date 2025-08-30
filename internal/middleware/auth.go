@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/wukong0111/go-banks/internal/auth"
+	"github.com/wukong0111/go-banks/internal/logger"
 	"github.com/wukong0111/go-banks/internal/models"
 )
 
@@ -28,6 +29,14 @@ func (a *AuthMiddleware) RequireAuth(requiredPermissions ...string) gin.HandlerF
 		// Extract token from Authorization header
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
+			if log, ok := logger.GetLogger(c); ok {
+				log.Warn("missing authorization header",
+					"remote_addr", c.ClientIP(),
+					"user_agent", c.GetHeader("User-Agent"),
+					"path", c.Request.URL.Path,
+					"method", c.Request.Method,
+				)
+			}
 			a.respondUnauthorized(c, "Authorization header is required")
 			return
 		}
@@ -35,6 +44,20 @@ func (a *AuthMiddleware) RequireAuth(requiredPermissions ...string) gin.HandlerF
 		// Check if the header starts with "Bearer "
 		const bearerPrefix = "Bearer "
 		if !strings.HasPrefix(authHeader, bearerPrefix) {
+			if log, ok := logger.GetLogger(c); ok {
+				log.Warn("invalid authorization header format",
+					"remote_addr", c.ClientIP(),
+					"user_agent", c.GetHeader("User-Agent"),
+					"path", c.Request.URL.Path,
+					"method", c.Request.Method,
+					"auth_header_prefix", func() string {
+						if len(authHeader) > 10 {
+							return authHeader[:10] + "..."
+						}
+						return authHeader
+					}(),
+				)
+			}
 			a.respondUnauthorized(c, "Authorization header must use Bearer token")
 			return
 		}
@@ -42,6 +65,14 @@ func (a *AuthMiddleware) RequireAuth(requiredPermissions ...string) gin.HandlerF
 		// Extract the token
 		tokenString := authHeader[len(bearerPrefix):]
 		if tokenString == "" {
+			if log, ok := logger.GetLogger(c); ok {
+				log.Warn("empty bearer token",
+					"remote_addr", c.ClientIP(),
+					"user_agent", c.GetHeader("User-Agent"),
+					"path", c.Request.URL.Path,
+					"method", c.Request.Method,
+				)
+			}
 			a.respondUnauthorized(c, "Bearer token is required")
 			return
 		}
@@ -49,6 +80,16 @@ func (a *AuthMiddleware) RequireAuth(requiredPermissions ...string) gin.HandlerF
 		// Validate the token
 		claims, err := a.jwtService.ValidateToken(tokenString)
 		if err != nil {
+			if log, ok := logger.GetLogger(c); ok {
+				log.Warn("token validation failed",
+					"error", err.Error(),
+					"remote_addr", c.ClientIP(),
+					"user_agent", c.GetHeader("User-Agent"),
+					"path", c.Request.URL.Path,
+					"method", c.Request.Method,
+					"token_length", len(tokenString),
+				)
+			}
 			a.respondUnauthorized(c, "Invalid or expired token")
 			return
 		}
@@ -56,6 +97,17 @@ func (a *AuthMiddleware) RequireAuth(requiredPermissions ...string) gin.HandlerF
 		// Check permissions if required
 		if len(requiredPermissions) > 0 {
 			if !claims.HasAnyPermission(requiredPermissions) {
+				if log, ok := logger.GetLogger(c); ok {
+					log.Warn("insufficient permissions",
+						"user_id", claims.Subject,
+						"required_permissions", requiredPermissions,
+						"user_permissions", claims.Permissions,
+						"remote_addr", c.ClientIP(),
+						"user_agent", c.GetHeader("User-Agent"),
+						"path", c.Request.URL.Path,
+						"method", c.Request.Method,
+					)
+				}
 				a.respondForbidden(c, "Insufficient permissions")
 				return
 			}

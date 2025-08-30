@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/google/uuid"
 
@@ -95,7 +96,16 @@ func (s *BankCreatorService) requestToBank(request *CreateBankRequest) *models.B
 
 	var bankGroupID *uuid.UUID
 	if request.BankGroupID != nil && *request.BankGroupID != "" {
-		if parsed, err := uuid.Parse(*request.BankGroupID); err == nil {
+		parsed, err := uuid.Parse(*request.BankGroupID)
+		if err != nil {
+			slog.Warn("invalid bank group ID format, ignoring bank group assignment",
+				"error", err.Error(),
+				"bank_group_id", *request.BankGroupID,
+				"bank_name", request.Name,
+				"bank_will_be_created_without_group", true,
+			)
+			// Continue without bankGroupID (backwards compatibility)
+		} else {
 			bankGroupID = &parsed
 		}
 	}

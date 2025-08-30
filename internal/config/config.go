@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"strconv"
 	"strings"
@@ -64,6 +65,16 @@ func Load() (*Config, error) {
 		},
 	}
 
+	slog.Info("configuration loaded successfully",
+		"port", config.Port,
+		"db_host", config.Database.Host,
+		"db_port", config.Database.Port,
+		"db_name", config.Database.Name,
+		"jwt_expiry", config.JWT.Expiry,
+		"log_level", config.Logger.Level,
+		"log_outputs", config.Logger.Outputs,
+	)
+
 	return config, nil
 }
 
@@ -83,6 +94,13 @@ func getEnvAsInt(key string, defaultValue int) int {
 	if value := os.Getenv(key); value != "" {
 		if intValue, err := strconv.Atoi(value); err == nil {
 			return intValue
+		} else {
+			slog.Warn("invalid environment variable, using default",
+				"key", key,
+				"value", value,
+				"default", defaultValue,
+				"error", err.Error(),
+			)
 		}
 	}
 	return defaultValue
@@ -92,6 +110,13 @@ func getEnvAsInt64(key string, defaultValue int64) int64 {
 	if value := os.Getenv(key); value != "" {
 		if intValue, err := strconv.ParseInt(value, 10, 64); err == nil {
 			return intValue
+		} else {
+			slog.Warn("invalid environment variable, using default",
+				"key", key,
+				"value", value,
+				"default", defaultValue,
+				"error", err.Error(),
+			)
 		}
 	}
 	return defaultValue
@@ -101,6 +126,13 @@ func getEnvAsBool(key string, defaultValue bool) bool {
 	if value := os.Getenv(key); value != "" {
 		if boolValue, err := strconv.ParseBool(value); err == nil {
 			return boolValue
+		} else {
+			slog.Warn("invalid environment variable, using default",
+				"key", key,
+				"value", value,
+				"default", defaultValue,
+				"error", err.Error(),
+			)
 		}
 	}
 	return defaultValue

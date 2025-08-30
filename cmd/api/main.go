@@ -92,7 +92,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("invalid JWT expiry duration: %w", err)
 	}
-	jwtService := auth.NewJWTService(cfg.JWT.Secret, jwtExpiry)
+	jwtService := auth.NewJWTService(cfg.JWT.Secret, jwtExpiry, appLogger)
 	authMiddleware := middleware.NewAuthMiddleware(jwtService)
 
 	// Setup Gin router

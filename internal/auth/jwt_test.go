@@ -1,18 +1,23 @@
 package auth
 
 import (
+	"io"
+	"log/slog"
 	"testing"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/wukong0111/go-banks/internal/logger"
 )
 
 func TestJWTService_GenerateToken(t *testing.T) {
 	secret := "test-secret-key"
 	expiry := time.Hour
-	service := NewJWTService(secret, expiry)
+	testLogger := logger.NewMultiLogger(slog.NewTextHandler(io.Discard, nil))
+	service := NewJWTService(secret, expiry, testLogger)
 
 	permissions := []string{"banks:read", "banks:write"}
 
@@ -33,7 +38,8 @@ func TestJWTService_GenerateToken(t *testing.T) {
 }
 
 func TestJWTService_ValidateToken_InvalidToken(t *testing.T) {
-	service := NewJWTService("test-secret", time.Hour)
+	testLogger := logger.NewMultiLogger(slog.NewTextHandler(io.Discard, nil))
+	service := NewJWTService("test-secret", time.Hour, testLogger)
 
 	// Test with invalid token
 	_, err := service.ValidateToken("invalid-token")
@@ -42,7 +48,8 @@ func TestJWTService_ValidateToken_InvalidToken(t *testing.T) {
 
 func TestJWTService_ValidateToken_ExpiredToken(t *testing.T) {
 	secret := "test-secret-key"
-	service := NewJWTService(secret, -time.Hour) // Expired
+	testLogger := logger.NewMultiLogger(slog.NewTextHandler(io.Discard, nil))
+	service := NewJWTService(secret, -time.Hour, testLogger) // Expired
 
 	permissions := []string{"banks:read"}
 	token, err := service.GenerateToken(permissions)
@@ -57,8 +64,9 @@ func TestJWTService_ValidateToken_ExpiredToken(t *testing.T) {
 }
 
 func TestJWTService_ValidateToken_WrongSecret(t *testing.T) {
-	service1 := NewJWTService("secret1", time.Hour)
-	service2 := NewJWTService("secret2", time.Hour)
+	testLogger := logger.NewMultiLogger(slog.NewTextHandler(io.Discard, nil))
+	service1 := NewJWTService("secret1", time.Hour, testLogger)
+	service2 := NewJWTService("secret2", time.Hour, testLogger)
 
 	permissions := []string{"banks:read"}
 	token, err := service1.GenerateToken(permissions)
@@ -123,7 +131,8 @@ func TestClaims_HasAllPermissions(t *testing.T) {
 }
 
 func TestJWTService_TokenStructure(t *testing.T) {
-	service := NewJWTService("test-secret", time.Hour)
+	testLogger := logger.NewMultiLogger(slog.NewTextHandler(io.Discard, nil))
+	service := NewJWTService("test-secret", time.Hour, testLogger)
 	permissions := []string{"banks:read"}
 
 	tokenString, err := service.GenerateToken(permissions)

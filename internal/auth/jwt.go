@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+
+	"github.com/wukong0111/go-banks/internal/logger"
 )
 
 // Claims represents the JWT claims for our API
@@ -19,13 +21,15 @@ type Claims struct {
 type JWTService struct {
 	secret []byte
 	expiry time.Duration
+	logger logger.Logger
 }
 
-// NewJWTService creates a new JWT service with the provided secret and expiry
-func NewJWTService(secret string, expiry time.Duration) *JWTService {
+// NewJWTService creates a new JWT service with the provided secret, expiry and logger
+func NewJWTService(secret string, expiry time.Duration, logger logger.Logger) *JWTService {
 	return &JWTService{
 		secret: []byte(secret),
 		expiry: expiry,
+		logger: logger,
 	}
 }
 
@@ -47,6 +51,13 @@ func (j *JWTService) GenerateToken(permissions []string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString(j.secret)
 	if err != nil {
+		j.logger.Error("failed to sign JWT token",
+			"error", err.Error(),
+			"subject", claims.Subject,
+			"permissions", claims.Permissions,
+			"expires_at", claims.ExpiresAt.Time,
+			"signing_method", "HS256",
+		)
 		return "", fmt.Errorf("failed to sign token: %w", err)
 	}
 
@@ -64,15 +75,26 @@ func (j *JWTService) ValidateToken(tokenString string) (*Claims, error) {
 	})
 
 	if err != nil {
+		j.logger.Warn("failed to parse JWT token",
+			"error", err.Error(),
+			"token_length", len(tokenString),
+		)
 		return nil, fmt.Errorf("failed to parse token: %w", err)
 	}
 
 	if !token.Valid {
+		j.logger.Warn("token validation failed - token is invalid",
+			"token_length", len(tokenString),
+		)
 		return nil, errors.New("invalid token")
 	}
 
 	claims, ok := token.Claims.(*Claims)
 	if !ok {
+		j.logger.Warn("token validation failed - invalid claims structure",
+			"token_length", len(tokenString),
+			"claims_type", fmt.Sprintf("%T", token.Claims),
+		)
 		return nil, errors.New("invalid token claims")
 	}
 

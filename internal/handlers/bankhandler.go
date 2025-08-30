@@ -40,6 +40,15 @@ func (h *BankHandler) GetBanks(c *gin.Context) {
 	if pageStr, exists := c.GetQuery("page"); exists {
 		page, err = strconv.Atoi(pageStr)
 		if err != nil {
+			if log, ok := logger.GetLogger(c); ok {
+				log.Warn("invalid page parameter",
+					"error", err.Error(),
+					"page_value", pageStr,
+					"remote_addr", c.ClientIP(),
+					"user_agent", c.GetHeader("User-Agent"),
+					"query_params", c.Request.URL.RawQuery,
+				)
+			}
 			response := models.APIResponse[any]{
 				Success: false,
 				Error:   stringPtr("Invalid page parameter: must be a number"),
@@ -53,6 +62,15 @@ func (h *BankHandler) GetBanks(c *gin.Context) {
 	if limitStr, exists := c.GetQuery("limit"); exists {
 		limit, err = strconv.Atoi(limitStr)
 		if err != nil {
+			if log, ok := logger.GetLogger(c); ok {
+				log.Warn("invalid limit parameter",
+					"error", err.Error(),
+					"limit_value", limitStr,
+					"remote_addr", c.ClientIP(),
+					"user_agent", c.GetHeader("User-Agent"),
+					"query_params", c.Request.URL.RawQuery,
+				)
+			}
 			response := models.APIResponse[any]{
 				Success: false,
 				Error:   stringPtr("Invalid limit parameter: must be a number"),
@@ -96,6 +114,14 @@ func (h *BankHandler) GetBankDetails(c *gin.Context) {
 	// Extract bank ID from path parameter
 	bankID := c.Param("bankId")
 	if bankID == "" {
+		if log, ok := logger.GetLogger(c); ok {
+			log.Warn("missing bank ID parameter",
+				"remote_addr", c.ClientIP(),
+				"user_agent", c.GetHeader("User-Agent"),
+				"path", c.Request.URL.Path,
+				"query_params", c.Request.URL.RawQuery,
+			)
+		}
 		response := models.APIResponse[any]{
 			Success: false,
 			Error:   stringPtr("Bank ID is required"),

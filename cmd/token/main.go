@@ -3,7 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"log"
+	"log/slog"
 	"os"
 	"strings"
 	"time"
@@ -12,6 +14,7 @@ import (
 
 	"github.com/wukong0111/go-banks/internal/auth"
 	"github.com/wukong0111/go-banks/internal/config"
+	"github.com/wukong0111/go-banks/internal/logger"
 )
 
 func main() {
@@ -78,7 +81,8 @@ func main() {
 	}
 
 	// Create JWT service
-	jwtService := auth.NewJWTService(cfg.JWT.Secret, expiry)
+	tokenLogger := logger.NewMultiLogger(slog.NewTextHandler(io.Discard, nil))
+	jwtService := auth.NewJWTService(cfg.JWT.Secret, expiry, tokenLogger)
 
 	// Generate token
 	token, err := jwtService.GenerateToken(permissionsList)
