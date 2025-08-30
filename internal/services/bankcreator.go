@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -94,13 +95,10 @@ func (s *BankCreatorService) requestToBank(request *CreateBankRequest) (*models.
 	// BankID is now required, use it directly
 	bankID := request.BankID
 
-	var bankGroupID *uuid.UUID
-	if request.BankGroupID != nil && *request.BankGroupID != "" {
-		parsed, err := uuid.Parse(*request.BankGroupID)
-		if err != nil {
-			return nil, fmt.Errorf("invalid bank_group_id format: %w", err)
-		}
-		bankGroupID = &parsed
+	// Parse BankGroupID if provided and not empty
+	bankGroupID, err := s.parseBankGroupID(request.BankGroupID)
+	if err != nil {
+		return nil, err
 	}
 
 	return &models.Bank{
@@ -121,6 +119,28 @@ func (s *BankCreatorService) requestToBank(request *CreateBankRequest) (*models.
 		Attribute:              request.Attribute,
 		AuthTypeChoiceRequired: request.AuthTypeChoiceRequired,
 	}, nil
+}
+
+// parseBankGroupID safely parses an optional BankGroupID string pointer into a UUID pointer
+func (s *BankCreatorService) parseBankGroupID(bankGroupID *string) (*uuid.UUID, error) {
+	// Return nil if not provided
+	if bankGroupID == nil {
+		return nil, nil
+	}
+
+	// Trim whitespace and check if empty
+	trimmedID := strings.TrimSpace(*bankGroupID)
+	if trimmedID == "" {
+		return nil, nil
+	}
+
+	// Parse as UUID
+	parsed, err := uuid.Parse(trimmedID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid bank_group_id format: %w", err)
+	}
+
+	return &parsed, nil
 }
 
 func (s *BankCreatorService) buildEnvironmentConfigs(request *CreateBankRequest, bankID string) []*models.BankEnvironmentConfig {

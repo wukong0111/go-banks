@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -398,4 +399,106 @@ func TestBankCreatorService_CreateBank_InvalidBankGroupID(t *testing.T) {
 	// Writer should not be called when validation fails
 	mockWriter.AssertNotCalled(t, "CreateBank")
 	mockWriter.AssertNotCalled(t, "CreateBankWithEnvironments")
+}
+
+func TestBankCreatorService_CreateBank_WhitespaceOnlyBankGroupID(t *testing.T) {
+	mockWriter := new(MockBankWriter)
+	service := NewBankCreatorService(mockWriter)
+
+	whitespaceGroupID := "   \t\n   " // Only whitespace
+	expectedBank := &models.Bank{
+		BankID:    "whitespace_test_bank_009",
+		Name:      "Bank with Whitespace Group",
+		BankCodes: []string{"0009"},
+		API:       "berlin_group",
+		Country:   "SE",
+	}
+
+	mockWriter.On("CreateBank", mock.Anything, mock.MatchedBy(func(bank *models.Bank) bool {
+		return bank.Name == "Bank with Whitespace Group" && bank.BankGroupID == nil
+	})).Return(nil)
+
+	request := &CreateBankRequest{
+		BankID:                 "whitespace_test_bank_009",
+		Name:                   "Bank with Whitespace Group",
+		BankCodes:              []string{"0009"},
+		API:                    "berlin_group",
+		APIVersion:             "1.3.6",
+		ASPSP:                  "test_aspsp",
+		Country:                "SE",
+		AuthTypeChoiceRequired: false,
+		BankGroupID:            &whitespaceGroupID,
+	}
+
+	bank, err := service.CreateBank(context.Background(), request)
+	require.NoError(t, err)
+	assert.Equal(t, expectedBank.Name, bank.Name)
+	assert.Nil(t, bank.BankGroupID) // Should be nil after trimming whitespace
+
+	mockWriter.AssertExpectations(t)
+}
+
+func TestBankCreatorService_parseBankGroupID_EdgeCases(t *testing.T) {
+	service := NewBankCreatorService(nil)
+
+	testCases := []struct {
+		name     string
+		input    *string
+		expected *uuid.UUID
+		hasError bool
+	}{
+		{
+			name:     "nil input",
+			input:    nil,
+			expected: nil,
+			hasError: false,
+		},
+		{
+			name:     "empty string",
+			input:    func() *string { s := ""; return &s }(),
+			expected: nil,
+			hasError: false,
+		},
+		{
+			name:     "whitespace only",
+			input:    func() *string { s := "  \t\n  "; return &s }(),
+			expected: nil,
+			hasError: false,
+		},
+		{
+			name:     "valid UUID with whitespace",
+			input:    func() *string { s := "  " + uuid.New().String() + "  "; return &s }(),
+			expected: nil, // Will be set in test
+			hasError: false,
+		},
+		{
+			name:     "invalid UUID",
+			input:    func() *string { s := "invalid-uuid"; return &s }(),
+			expected: nil,
+			hasError: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := service.parseBankGroupID(tc.input)
+
+			if tc.hasError {
+				assert.Error(t, err)
+				assert.Nil(t, result)
+			} else {
+				assert.NoError(t, err)
+				
+				if tc.name == "valid UUID with whitespace" {
+					// Special case: verify UUID was parsed correctly
+					assert.NotNil(t, result)
+					trimmed := strings.TrimSpace(*tc.input)
+					expectedUUID, _ := uuid.Parse(trimmed)
+					assert.Equal(t, expectedUUID, *result)
+				} else {
+					assert.Equal(t, tc.expected, result)
+				}
+			}
+		})
+	}
 }
