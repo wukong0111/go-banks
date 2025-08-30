@@ -255,6 +255,17 @@ make test    # All tests must pass
 make build   # Clean compilation required
 ```
 
+**⚠️ CRITICAL LINTER POLICY:**
+- **NEVER modify `.golangci.yml` to suppress warnings by exclusion**
+- **NEVER add file exclusions or disable linters to silence issues**
+- **ALWAYS fix the underlying code issue causing the warning**
+- **Only acceptable config changes:**
+  - Adjusting thresholds for legitimate edge cases (e.g., slog.Record size)
+  - Enabling new linters to improve code quality
+  - Adding comments to document why specific thresholds are needed
+
+**Rationale:** Suppressing linter warnings hides real issues and degrades code quality over time. Every warning should be addressed by improving the code, not by silencing the tool.
+
 ## 📚 Domain Knowledge
 
 ### Banking Domain Concepts
