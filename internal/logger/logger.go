@@ -28,6 +28,14 @@ func NewMultiLogger(handlers ...slog.Handler) *MultiLogger {
 	}
 }
 
+// NewDiscardLogger creates a logger that discards all output (for tests)
+func NewDiscardLogger() *MultiLogger {
+	handler := &discardHandler{}
+	return &MultiLogger{
+		logger: slog.New(handler),
+	}
+}
+
 // Debug logs a debug message
 func (ml *MultiLogger) Debug(msg string, args ...any) {
 	ml.logger.Debug(msg, args...)
@@ -106,4 +114,23 @@ func (mh *multiHandler) WithGroup(name string) slog.Handler {
 		newHandlers[i] = h.WithGroup(name)
 	}
 	return &multiHandler{handlers: newHandlers}
+}
+
+// discardHandler discards all log records (for tests)
+type discardHandler struct{}
+
+func (dh *discardHandler) Enabled(context.Context, slog.Level) bool {
+	return false
+}
+
+func (dh *discardHandler) Handle(context.Context, slog.Record) error {
+	return nil
+}
+
+func (dh *discardHandler) WithAttrs([]slog.Attr) slog.Handler {
+	return dh
+}
+
+func (dh *discardHandler) WithGroup(string) slog.Handler {
+	return dh
 }

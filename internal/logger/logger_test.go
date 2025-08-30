@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io"
 	"log/slog"
 	"os"
 	"strings"
@@ -275,8 +274,8 @@ func TestLoggerFromConfig(t *testing.T) {
 
 // BenchmarkMultiLogger tests performance of multi-logger
 func BenchmarkMultiLogger(b *testing.B) {
-	handler1 := slog.NewTextHandler(io.Discard, nil)
-	handler2 := slog.NewJSONHandler(io.Discard, nil)
+	handler1 := &discardHandler{}
+	handler2 := &discardHandler{}
 	logger := NewMultiLogger(handler1, handler2)
 
 	b.ResetTimer()
@@ -287,7 +286,7 @@ func BenchmarkMultiLogger(b *testing.B) {
 
 // BenchmarkSingleLogger compares with single handler
 func BenchmarkSingleLogger(b *testing.B) {
-	handler := slog.NewJSONHandler(io.Discard, nil)
+	handler := &discardHandler{}
 	logger := NewMultiLogger(handler)
 
 	b.ResetTimer()

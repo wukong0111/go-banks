@@ -92,48 +92,48 @@ func getEnv(key, defaultValue string) string {
 
 func getEnvAsInt(key string, defaultValue int) int {
 	if value := os.Getenv(key); value != "" {
-		if intValue, err := strconv.Atoi(value); err == nil {
+		intValue, err := strconv.Atoi(value)
+		if err == nil {
 			return intValue
-		} else {
-			slog.Warn("invalid environment variable, using default",
-				"key", key,
-				"value", value,
-				"default", defaultValue,
-				"error", err.Error(),
-			)
 		}
+		slog.Warn("invalid environment variable, using default",
+			"key", key,
+			"value", value,
+			"default", defaultValue,
+			"error", err.Error(),
+		)
 	}
 	return defaultValue
 }
 
 func getEnvAsInt64(key string, defaultValue int64) int64 {
 	if value := os.Getenv(key); value != "" {
-		if intValue, err := strconv.ParseInt(value, 10, 64); err == nil {
+		intValue, err := strconv.ParseInt(value, 10, 64)
+		if err == nil {
 			return intValue
-		} else {
-			slog.Warn("invalid environment variable, using default",
-				"key", key,
-				"value", value,
-				"default", defaultValue,
-				"error", err.Error(),
-			)
 		}
+		slog.Warn("invalid environment variable, using default",
+			"key", key,
+			"value", value,
+			"default", defaultValue,
+			"error", err.Error(),
+		)
 	}
 	return defaultValue
 }
 
 func getEnvAsBool(key string, defaultValue bool) bool {
 	if value := os.Getenv(key); value != "" {
-		if boolValue, err := strconv.ParseBool(value); err == nil {
+		boolValue, err := strconv.ParseBool(value)
+		if err == nil {
 			return boolValue
-		} else {
-			slog.Warn("invalid environment variable, using default",
-				"key", key,
-				"value", value,
-				"default", defaultValue,
-				"error", err.Error(),
-			)
 		}
+		slog.Warn("invalid environment variable, using default",
+			"key", key,
+			"value", value,
+			"default", defaultValue,
+			"error", err.Error(),
+		)
 	}
 	return defaultValue
 }

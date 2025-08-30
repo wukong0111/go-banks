@@ -3,9 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io"
 	"log"
-	"log/slog"
 	"os"
 	"strings"
 	"time"
@@ -81,7 +79,7 @@ func main() {
 	}
 
 	// Create JWT service
-	tokenLogger := logger.NewMultiLogger(slog.NewTextHandler(io.Discard, nil))
+	tokenLogger := logger.NewDiscardLogger()
 	jwtService := auth.NewJWTService(cfg.JWT.Secret, expiry, tokenLogger)
 
 	// Generate token

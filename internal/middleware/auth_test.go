@@ -1,8 +1,6 @@
 package middleware
 
 import (
-	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -22,7 +20,7 @@ func init() {
 
 func TestAuthMiddleware_RequireAuth_ValidToken(t *testing.T) {
 	// Setup
-	testLogger := logger.NewMultiLogger(slog.NewTextHandler(io.Discard, nil))
+	testLogger := logger.NewDiscardLogger()
 	jwtService := auth.NewJWTService("test-secret", time.Hour, testLogger)
 	middleware := NewAuthMiddleware(jwtService)
 
@@ -50,7 +48,7 @@ func TestAuthMiddleware_RequireAuth_ValidToken(t *testing.T) {
 
 func TestAuthMiddleware_RequireAuth_MissingAuthorizationHeader(t *testing.T) {
 	// Setup
-	testLogger := logger.NewMultiLogger(slog.NewTextHandler(io.Discard, nil))
+	testLogger := logger.NewDiscardLogger()
 	jwtService := auth.NewJWTService("test-secret", time.Hour, testLogger)
 	middleware := NewAuthMiddleware(jwtService)
 
@@ -73,7 +71,7 @@ func TestAuthMiddleware_RequireAuth_MissingAuthorizationHeader(t *testing.T) {
 
 func TestAuthMiddleware_RequireAuth_InvalidBearerFormat(t *testing.T) {
 	// Setup
-	testLogger := logger.NewMultiLogger(slog.NewTextHandler(io.Discard, nil))
+	testLogger := logger.NewDiscardLogger()
 	jwtService := auth.NewJWTService("test-secret", time.Hour, testLogger)
 	middleware := NewAuthMiddleware(jwtService)
 
@@ -109,7 +107,7 @@ func TestAuthMiddleware_RequireAuth_InvalidBearerFormat(t *testing.T) {
 
 func TestAuthMiddleware_RequireAuth_InvalidToken(t *testing.T) {
 	// Setup
-	testLogger := logger.NewMultiLogger(slog.NewTextHandler(io.Discard, nil))
+	testLogger := logger.NewDiscardLogger()
 	jwtService := auth.NewJWTService("test-secret", time.Hour, testLogger)
 	middleware := NewAuthMiddleware(jwtService)
 
@@ -133,7 +131,7 @@ func TestAuthMiddleware_RequireAuth_InvalidToken(t *testing.T) {
 
 func TestAuthMiddleware_RequireAuth_ExpiredToken(t *testing.T) {
 	// Setup with very short expiry
-	testLogger := logger.NewMultiLogger(slog.NewTextHandler(io.Discard, nil))
+	testLogger := logger.NewDiscardLogger()
 	jwtService := auth.NewJWTService("test-secret", time.Nanosecond, testLogger)
 	middleware := NewAuthMiddleware(jwtService)
 
@@ -164,7 +162,7 @@ func TestAuthMiddleware_RequireAuth_ExpiredToken(t *testing.T) {
 
 func TestAuthMiddleware_RequireAuth_InsufficientPermissions(t *testing.T) {
 	// Setup
-	testLogger := logger.NewMultiLogger(slog.NewTextHandler(io.Discard, nil))
+	testLogger := logger.NewDiscardLogger()
 	jwtService := auth.NewJWTService("test-secret", time.Hour, testLogger)
 	middleware := NewAuthMiddleware(jwtService)
 
@@ -192,7 +190,7 @@ func TestAuthMiddleware_RequireAuth_InsufficientPermissions(t *testing.T) {
 
 func TestAuthMiddleware_RequireAuth_MultiplePermissions(t *testing.T) {
 	// Setup
-	testLogger := logger.NewMultiLogger(slog.NewTextHandler(io.Discard, nil))
+	testLogger := logger.NewDiscardLogger()
 	jwtService := auth.NewJWTService("test-secret", time.Hour, testLogger)
 	middleware := NewAuthMiddleware(jwtService)
 
@@ -220,7 +218,7 @@ func TestAuthMiddleware_RequireAuth_MultiplePermissions(t *testing.T) {
 
 func TestAuthMiddleware_RequireAuth_NoPermissionsRequired(t *testing.T) {
 	// Setup
-	testLogger := logger.NewMultiLogger(slog.NewTextHandler(io.Discard, nil))
+	testLogger := logger.NewDiscardLogger()
 	jwtService := auth.NewJWTService("test-secret", time.Hour, testLogger)
 	middleware := NewAuthMiddleware(jwtService)
 
@@ -248,7 +246,7 @@ func TestAuthMiddleware_RequireAuth_NoPermissionsRequired(t *testing.T) {
 
 func TestAuthMiddleware_GetClaims(t *testing.T) {
 	// Setup
-	testLogger := logger.NewMultiLogger(slog.NewTextHandler(io.Discard, nil))
+	testLogger := logger.NewDiscardLogger()
 	jwtService := auth.NewJWTService("test-secret", time.Hour, testLogger)
 	middleware := NewAuthMiddleware(jwtService)
 
@@ -293,7 +291,7 @@ func TestAuthMiddleware_GetClaims(t *testing.T) {
 
 func TestAuthMiddleware_GetPermissions(t *testing.T) {
 	// Setup
-	testLogger := logger.NewMultiLogger(slog.NewTextHandler(io.Discard, nil))
+	testLogger := logger.NewDiscardLogger()
 	jwtService := auth.NewJWTService("test-secret", time.Hour, testLogger)
 	middleware := NewAuthMiddleware(jwtService)
 

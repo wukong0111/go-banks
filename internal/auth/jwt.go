@@ -25,11 +25,11 @@ type JWTService struct {
 }
 
 // NewJWTService creates a new JWT service with the provided secret, expiry and logger
-func NewJWTService(secret string, expiry time.Duration, logger logger.Logger) *JWTService {
+func NewJWTService(secret string, expiry time.Duration, log logger.Logger) *JWTService {
 	return &JWTService{
 		secret: []byte(secret),
 		expiry: expiry,
-		logger: logger,
+		logger: log,
 	}
 }
 

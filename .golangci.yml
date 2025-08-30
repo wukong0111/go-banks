@@ -28,7 +28,7 @@ linters:
         rangeValCopy:
           sizeThreshold: 32
         hugeParam:
-          sizeThreshold: 80
+          sizeThreshold: 300  # Increased from 80 to 300 bytes to avoid noise from slog.Record (288 bytes)
     perfsprint:
       int-conversion: true
       err-error: true

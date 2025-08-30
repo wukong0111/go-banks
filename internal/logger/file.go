@@ -2,11 +2,54 @@ package logger
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 )
+
+// validateAndSanitizePath validates and sanitizes log file paths to prevent traversal attacks
+func validateAndSanitizePath(filename string) (string, error) {
+	// Clean the path to normalize it
+	cleanPath := filepath.Clean(filename)
+
+	// Check for path traversal attempts
+	if strings.Contains(cleanPath, "..") {
+		return "", errors.New("invalid log path: traversal pattern detected")
+	}
+
+	// If relative path, constrain to logs directory
+	if !filepath.IsAbs(cleanPath) {
+		logsDir := "logs"
+		cleanPath = filepath.Join(logsDir, cleanPath)
+	}
+
+	// For absolute paths, validate they're in allowed directories
+	if filepath.IsAbs(cleanPath) {
+		allowed := false
+		allowedPrefixes := []string{
+			"/var/log/",
+			"/tmp/",
+			filepath.Join(os.TempDir(), ""),
+		}
+
+		for _, prefix := range allowedPrefixes {
+			if strings.HasPrefix(cleanPath, prefix) {
+				allowed = true
+				break
+			}
+		}
+
+		if !allowed {
+			return "", fmt.Errorf("log path outside allowed directories: %s", cleanPath)
+		}
+	}
+
+	return cleanPath, nil
+}
 
 // NewJSONFileHandler creates a JSON handler that writes to a file
 func NewJSONFileHandler(filename string, opts *slog.HandlerOptions) (slog.Handler, error) {
@@ -14,13 +57,19 @@ func NewJSONFileHandler(filename string, opts *slog.HandlerOptions) (slog.Handle
 		opts = &slog.HandlerOptions{}
 	}
 
+	// Validate and sanitize the file path
+	safePath, err := validateAndSanitizePath(filename)
+	if err != nil {
+		return nil, fmt.Errorf("invalid log file path: %w", err)
+	}
+
 	// Ensure directory exists
-	dir := filepath.Dir(filename)
+	dir := filepath.Dir(safePath)
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return nil, err
 	}
 
-	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
+	file, err := os.OpenFile(safePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600) // #nosec G304 -- path is validated and sanitized
 	if err != nil {
 		return nil, err
 	}
@@ -34,13 +83,19 @@ func NewTextFileHandler(filename string, opts *slog.HandlerOptions) (slog.Handle
 		opts = &slog.HandlerOptions{}
 	}
 
+	// Validate and sanitize the file path
+	safePath, err := validateAndSanitizePath(filename)
+	if err != nil {
+		return nil, fmt.Errorf("invalid log file path: %w", err)
+	}
+
 	// Ensure directory exists
-	dir := filepath.Dir(filename)
+	dir := filepath.Dir(safePath)
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return nil, err
 	}
 
-	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
+	file, err := os.OpenFile(safePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600) // #nosec G304 -- path is validated and sanitized
 	if err != nil {
 		return nil, err
 	}
@@ -62,13 +117,19 @@ func NewFileHandlerWithRotation(filename string, maxSize int64, opts *slog.Handl
 		opts = &slog.HandlerOptions{}
 	}
 
+	// Validate and sanitize the file path
+	safePath, err := validateAndSanitizePath(filename)
+	if err != nil {
+		return nil, fmt.Errorf("invalid log file path: %w", err)
+	}
+
 	// Ensure directory exists
-	dir := filepath.Dir(filename)
+	dir := filepath.Dir(safePath)
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return nil, err
 	}
 
-	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
+	file, err := os.OpenFile(safePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600) // #nosec G304 -- path is validated and sanitized
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +138,7 @@ func NewFileHandlerWithRotation(filename string, maxSize int64, opts *slog.Handl
 
 	return &FileHandlerWithRotation{
 		handler:  handler,
-		filename: filename,
+		filename: safePath, // Store the sanitized path
 		file:     file,
 		maxSize:  maxSize,
 	}, nil
@@ -137,8 +198,13 @@ func (fh *FileHandlerWithRotation) rotateIfNeeded() error {
 		return err
 	}
 
-	// Create new file
-	newFile, err := os.OpenFile(fh.filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
+	// Create new file with validated path
+	validatedPath, err := validateAndSanitizePath(fh.filename)
+	if err != nil {
+		return fmt.Errorf("invalid log file path during rotation: %w", err)
+	}
+
+	newFile, err := os.OpenFile(validatedPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600) // #nosec G304 -- path is validated and sanitized
 	if err != nil {
 		return err
 	}

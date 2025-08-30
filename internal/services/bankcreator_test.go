@@ -488,7 +488,7 @@ func TestBankCreatorService_parseBankGroupID_EdgeCases(t *testing.T) {
 				assert.Nil(t, result)
 			} else {
 				assert.NoError(t, err)
-				
+
 				if tc.name == "valid UUID with whitespace" {
 					// Special case: verify UUID was parsed correctly
 					assert.NotNil(t, result)
