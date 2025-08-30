@@ -87,6 +87,10 @@ func run() error {
 	bankCreatorService := services.NewBankCreatorService(bankWriter)
 	bankCreatorHandler := handlers.NewBankCreatorHandler(bankCreatorService)
 
+	// Initialize bank update dependencies
+	bankUpdaterService := services.NewBankUpdaterService(bankWriter, bankRepo)
+	bankUpdaterHandler := handlers.NewBankUpdaterHandler(bankUpdaterService)
+
 	// Initialize JWT service and auth middleware
 	jwtExpiry, err := time.ParseDuration(cfg.JWT.Expiry)
 	if err != nil {
@@ -118,6 +122,10 @@ func run() error {
 	api.POST("/banks",
 		authMiddleware.RequireAuth("banks:write"),
 		bankCreatorHandler.CreateBank)
+	// Bank update endpoint requires banks:write permission
+	api.PUT("/banks/:bankId",
+		authMiddleware.RequireAuth("banks:write"),
+		bankUpdaterHandler.UpdateBank)
 
 	// Create HTTP server with timeouts
 	srv := &http.Server{

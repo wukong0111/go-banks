@@ -29,6 +29,16 @@ func (m *MockBankWriter) CreateBankWithEnvironments(ctx context.Context, bank *m
 	return args.Error(0)
 }
 
+func (m *MockBankWriter) UpdateBank(ctx context.Context, bank *models.Bank) error {
+	args := m.Called(ctx, bank)
+	return args.Error(0)
+}
+
+func (m *MockBankWriter) UpdateBankWithEnvironments(ctx context.Context, bank *models.Bank, configs []*models.BankEnvironmentConfig) error {
+	args := m.Called(ctx, bank, configs)
+	return args.Error(0)
+}
+
 func TestBankCreatorService_CreateBank_Simple(t *testing.T) {
 	mockWriter := new(MockBankWriter)
 	service := NewBankCreatorService(mockWriter)
