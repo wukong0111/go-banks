@@ -55,6 +55,7 @@ func TestBankCreatorHandler_CreateBank_Success(t *testing.T) {
 	})).Return(expectedBank, nil)
 
 	requestBody := services.CreateBankRequest{
+		BankID:                 "test_bank_001",
 		Name:                   "Test Bank",
 		BankCodes:              []string{"0001"},
 		API:                    "berlin_group",
@@ -119,6 +120,7 @@ func TestBankCreatorHandler_CreateBank_WithEnvironments(t *testing.T) {
 	enabled := true
 	blocked := false
 	requestBody := services.CreateBankRequest{
+		BankID:                 "env_bank_002",
 		Name:                   "Bank with Environments",
 		BankCodes:              []string{"0002"},
 		API:                    "berlin_group",
@@ -184,6 +186,7 @@ func TestBankCreatorHandler_CreateBank_WithConfigurations(t *testing.T) {
 	prodEnabled := false
 
 	requestBody := services.CreateBankRequest{
+		BankID:                 "config_bank_003",
 		Name:                   "Bank with Configurations",
 		BankCodes:              []string{"0003"},
 		API:                    "berlin_group",
@@ -306,6 +309,7 @@ func TestBankCreatorHandler_CreateBank_ServiceError(t *testing.T) {
 		Return(nil, errors.New("database connection failed"))
 
 	requestBody := services.CreateBankRequest{
+		BankID:                 "error_bank_004",
 		Name:                   "Error Bank",
 		BankCodes:              []string{"0004"},
 		API:                    "berlin_group",
@@ -367,6 +371,7 @@ func TestBankCreatorHandler_CreateBank_WithOptionalFields(t *testing.T) {
 	documentation := "Test documentation"
 
 	requestBody := services.CreateBankRequest{
+		BankID:                 "complete_bank_005",
 		Name:                   "Complete Bank",
 		BankCodes:              []string{"0005"},
 		API:                    "berlin_group",

@@ -12,7 +12,7 @@ import (
 )
 
 type CreateBankRequest struct {
-	BankID                 *string                       `json:"bank_id,omitempty"`
+	BankID                 string                        `json:"bank_id" binding:"required"`
 	Name                   string                        `json:"name" binding:"required"`
 	BankCodes              []string                      `json:"bank_codes" binding:"required"`
 	API                    string                        `json:"api" binding:"required"`
@@ -89,10 +89,8 @@ func (s *BankCreatorService) CreateBank(ctx context.Context, request *CreateBank
 }
 
 func (s *BankCreatorService) requestToBank(request *CreateBankRequest) *models.Bank {
-	bankID := uuid.New().String()
-	if request.BankID != nil && *request.BankID != "" {
-		bankID = *request.BankID
-	}
+	// BankID is now required, use it directly
+	bankID := request.BankID
 
 	var bankGroupID *uuid.UUID
 	if request.BankGroupID != nil && *request.BankGroupID != "" {

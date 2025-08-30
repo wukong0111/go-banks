@@ -33,6 +33,7 @@ func TestBankCreatorService_CreateBank_Simple(t *testing.T) {
 	service := NewBankCreatorService(mockWriter)
 
 	request := &CreateBankRequest{
+		BankID:                 "test_bank_001",
 		Name:                   "Test Bank",
 		BankCodes:              []string{"0001"},
 		API:                    "berlin_group",
@@ -67,9 +68,8 @@ func TestBankCreatorService_CreateBank_WithPredefinedID(t *testing.T) {
 	mockWriter := new(MockBankWriter)
 	service := NewBankCreatorService(mockWriter)
 
-	bankID := "predefined_bank_id"
 	request := &CreateBankRequest{
-		BankID:                 &bankID,
+		BankID:                 "predefined_bank_id",
 		Name:                   "Test Bank with ID",
 		BankCodes:              []string{"0002"},
 		API:                    "berlin_group",
@@ -80,13 +80,13 @@ func TestBankCreatorService_CreateBank_WithPredefinedID(t *testing.T) {
 	}
 
 	mockWriter.On("CreateBank", mock.Anything, mock.MatchedBy(func(bank *models.Bank) bool {
-		return bank.BankID == bankID
+		return bank.BankID == "predefined_bank_id"
 	})).Return(nil)
 
 	bank, err := service.CreateBank(context.Background(), request)
 	require.NoError(t, err)
 
-	assert.Equal(t, bankID, bank.BankID)
+	assert.Equal(t, "predefined_bank_id", bank.BankID)
 	mockWriter.AssertExpectations(t)
 }
 
@@ -104,6 +104,7 @@ func TestBankCreatorService_CreateBank_WithOptionalFields(t *testing.T) {
 	attributes := map[string]any{"attr1": "val1"}
 
 	request := &CreateBankRequest{
+		BankID:                 "complete_bank_003",
 		Name:                   "Complete Bank",
 		BankCodes:              []string{"0003"},
 		API:                    "berlin_group",
@@ -151,6 +152,7 @@ func TestBankCreatorService_CreateBank_WithEnvironments(t *testing.T) {
 	riskyMessage := "Risky bank"
 
 	request := &CreateBankRequest{
+		BankID:                 "env_bank_004",
 		Name:                   "Bank with Environments",
 		BankCodes:              []string{"0004"},
 		API:                    "berlin_group",
@@ -212,6 +214,7 @@ func TestBankCreatorService_CreateBank_WithConfigurations(t *testing.T) {
 	appAuthRequired := true
 
 	request := &CreateBankRequest{
+		BankID:                 "config_bank_005",
 		Name:                   "Bank with Configurations",
 		BankCodes:              []string{"0005"},
 		API:                    "berlin_group",
@@ -271,6 +274,7 @@ func TestBankCreatorService_CreateBank_WriterError(t *testing.T) {
 	service := NewBankCreatorService(mockWriter)
 
 	request := &CreateBankRequest{
+		BankID:                 "error_bank_006",
 		Name:                   "Error Bank",
 		BankCodes:              []string{"0006"},
 		API:                    "berlin_group",
@@ -297,6 +301,7 @@ func TestBankCreatorService_CreateBank_WithEnvironments_WriterError(t *testing.T
 
 	enabled := true
 	request := &CreateBankRequest{
+		BankID:                 "error_env_bank_007",
 		Name:                   "Error Bank with Environments",
 		BankCodes:              []string{"0007"},
 		API:                    "berlin_group",
@@ -326,6 +331,7 @@ func TestBankCreatorService_RequestToBank_InvalidBankGroupID(t *testing.T) {
 
 	invalidGroupID := "invalid-uuid"
 	request := &CreateBankRequest{
+		BankID:                 "test_bank_008",
 		Name:                   "Test Bank",
 		BankCodes:              []string{"0008"},
 		API:                    "berlin_group",
@@ -347,6 +353,7 @@ func TestBankCreatorService_RequestToBank_ValidBankGroupID(t *testing.T) {
 
 	validGroupID := uuid.New().String()
 	request := &CreateBankRequest{
+		BankID:                 "test_bank_009",
 		Name:                   "Test Bank",
 		BankCodes:              []string{"0009"},
 		API:                    "berlin_group",
