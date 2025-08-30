@@ -1,79 +1,164 @@
-# GEMINI.md
+## Visión General del Proyecto
 
-## Project Overview
+Proyecto Go para API de servicio bancario. Usa Gin para framework web, PostgreSQL como base de datos, JWT para autenticación. Contenerizado con Docker y gestionado por Makefile.
 
-This is a Go project that provides a bank service API. It uses the Gin web framework, PostgreSQL for the database, and JWT for authentication. The project is containerized using Docker and managed with a `Makefile`.
+**Tecnologías Clave:**
+- Go: Lenguaje principal.
+- Gin: Framework para APIs.
+- PostgreSQL: Base de datos relacional.
+- Docker: Contenerización.
+- JWT: Seguridad con tokens.
+- golang-migrate: Migraciones de DB.
 
-**Key Technologies:**
+**Arquitectura:**
+- `cmd/`: Aplicaciones principales (API, migraciones, seeding).
+- `internal/`: Lógica de negocio (handlers, models, repositories, services).
+- `migrations/`: Archivos SQL de migraciones.
+- `seeders/`: Archivos SQL para datos iniciales.
 
-*   **Go:** The primary programming language.
-*   **Gin:** A web framework for building APIs.
-*   **PostgreSQL:** The relational database.
-*   **Docker:** For containerization of services.
-*   **JWT:** For securing the API with JSON Web Tokens.
-*   **golang-migrate:** For database migrations.
+## Construcción y Ejecución
 
-**Architecture:**
+**Prerrequisitos:**
+- Go 1.25.0 (requerido para features modernas).
+- Docker y Docker Compose.
+- `make`.
 
-The project follows a standard Go project layout:
+**Comandos Clave:**
+- `make dev`: Inicia entorno dev con live reload.
+- `make build`: Compila y crea binario en `bin/`.
+- `make run`: Ejecuta la app compilada.
+- `make test`: Ejecuta tests.
+- Migraciones: `make migrate-up` (aplicar), `make migrate-down` (revertir), `make migrate-status` (estado).
+- Seeding: `make seed`.
 
-*   `cmd/`: Contains the main applications for the API, database migrations, and seeding.
-*   `internal/`: Contains the core business logic, including handlers, models, repositories, and services.
-*   `migrations/`: Contains the SQL migration files.
-*   `seeders/`: Contains SQL files for seeding the database with initial data.
-*   `pkg/`: (Not present, but a common Go pattern) would contain reusable code.
+## Convenciones de Desarrollo
 
-## Building and Running
+### Estándares de Código
 
-The project uses a `Makefile` to simplify the development workflow.
+**Versión Requerida:** Go 1.25.0 - Usa features modernas:
+- Range over integers: `for i := range 10 { ... }`.
+- Inferencia de tipos mejorada.
+- Iteradores mejorados.
+- Sintaxis moderna: `any` en vez de `interface{}`.
+- Paquete slices: `slices.Contains()` en vez de loops manuales.
 
-**Prerequisites:**
+### Guías de Seguridad de Tipos
 
-*   Go (version 1.22 or higher)
-*   Docker and Docker Compose
-*   `make`
+**Principio:** Maximiza seguridad de tipos con sintaxis moderna.
 
-**Key Commands:**
+1. **Modernización de Sintaxis:**
+   - Usa `any` no `interface{}`.
 
-*   **Start the development environment:**
-    ```bash
-    make dev
-    ```
-    This command starts the development server with live reload.
+2. **Optimización de Seguridad:**
+   - Prefiere interfaces específicas para polimorfismo.
+   - Usa `any` cuando necesario, con sintaxis moderna.
 
-*   **Build the application:**
-    ```bash
-    make build
-    ```
-    This command compiles the application and creates a binary in the `bin/` directory.
+3. **Tipos Genéricos:**
+   - Para reusabilidad: `type APIResponse[T any] struct { ... }`.
+   - Alternativa: `any` con type switches.
 
-*   **Run the application:**
-    ```bash
-    make run
-    ```
-    This command runs the built application.
+**Casos Aceptables para `any`:**
+- Unmarshaling JSON: `map[string]any`.
+- Campos JSONB en DB.
+- Interfaces de libs externas.
+- Contenedores genéricos con constraints.
 
-*   **Run tests:**
-    ```bash
-    make test
-    ```
-    This command runs all the tests in the project.
+### Patrones de Código
 
-*   **Database Migrations:**
-    *   `make migrate-up`: Apply all pending migrations.
-    *   `make migrate-down`: Roll back all migrations.
-    *   `make migrate-status`: Show the migration status.
+1. **Manejo de Errores:**
+   - Patrón run(): `func main() { if err := run(); err != nil { logger.Error("failed to run application", "error", err) } }`.
+   - Usa `defer` para cleanup.
 
-*   **Database Seeding:**
-    *   `make seed`: Run all seeders.
+2. **Operaciones con Slices:**
+   - Usa paquete slices.
+   - Range over integers.
 
-## Development Conventions
+3. **Operaciones con Strings:**
+   - Concatenación simple.
+   - `errors.New` para mensajes estáticos.
+   - `fmt.Errorf` para formateo complejo.
 
-*   **Linting:** The project uses `golangci-lint` for code linting. Run `make lint` to check the code and `make lint-fix` to automatically fix issues. The linting rules are defined in `.golangci.yml`.
-*   **Formatting:** The project uses `goimports` for code formatting. Run `make format` to format the code.
-*   **Testing:** The project uses the standard Go testing library and the `testify` package for assertions. Test files are located next to the source files with a `_test.go` suffix.
-*   **Authentication:** The API is secured with JWT. The `Makefile` provides commands to generate JWT tokens with different permissions:
-    *   `make token`: Generate a token with default permissions.
-    *   `make token-read`: Generate a token with read-only permissions.
-    *   `make token-write`: Generate a token with write-only permissions.
-    *   `make token-admin`: Generate a token with admin permissions.
+4. **Patrones HTTP:**
+   - `http.NoBody` para requests vacíos.
+   - Manejo de errores con switch en strings.
+
+### Estándares de Testing
+
+**Framework:** testify.
+- `require` para assertions críticas.
+- `assert` para checks de valores.
+- `mock` para mocking.
+
+### Configuración de Linter
+
+**golangci-lint** con estándares estrictos - 0 issues tolerados.
+
+**Linters Habilitados:**
+- gosec, gocritic, staticcheck, revive, perfsprint, prealloc, ineffassign, unused, misspell.
+
+**Ejecución:**
+- `make lint`, `make test`, `make build` deben pasar limpios.
+
+**Política Crítica:**
+- Nunca suprime warnings editando config o excluyendo archivos.
+- Siempre fija el código subyacente.
+- Cambios aceptables: Ajustes de thresholds legítimos, nuevos linters.
+
+## Conocimiento de Dominio
+
+### Conceptos Bancarios
+
+**Entornos:**
+- `sandbox`: Dev/testing.
+- `production`: Operaciones live.
+- `uat`: Testing de aceptación.
+- `test`: Testing automatizado.
+
+**Modelos Core:**
+- `Bank`: Institución con país, tipo API, entornos.
+- `BankGroup`: Grupo de bancos relacionados.
+- `BankEnvironmentConfig`: Config por entorno.
+- `BankDetails`: Interfaz polimórfica (single/multiple entornos).
+
+**Patrones de Datos:**
+- Campos JSONB: `map[string]any`.
+- Arrays: `pgtype.Array[string]`.
+- Respuestas: `APIResponse[T any]`.
+
+## Principios de Diseño API
+
+**Especificación:** OpenAPI 3.0.3 en `docs/api-documentation.yml`.
+
+**Autenticación:** JWT requerido (excepto health checks).
+- Permisos: `banks:read/write`.
+- Validación via middleware.
+- Claims: subject, permissions array.
+
+**Patrones de Respuesta:**
+- Wrapper `APIResponse[T]`.
+- Códigos HTTP apropiados.
+- Errores estructurados.
+- Paginación en listas.
+
+## Notas Importantes
+
+**Workflows Críticos:**
+- Siempre migraciones antes de seeding: `make migrate-up && make seed`.
+- Nunca commit con issues: `make lint` debe mostrar 0 issues, `make test` pasar.
+- Test antes de commit.
+
+**Específicos de Entorno:**
+- Usa `docker compose` (no `docker-compose`).
+- PostgreSQL via container Docker.
+- Go 1.25.0 requerido para features modernas.
+
+**Operaciones DB:**
+- Migraciones versionadas (001-004).
+- Seeds dependen de migraciones actuales.
+- `make db-reset` para reset dev.
+
+**Operaciones Server:**
+- Shutdown graceful: Maneja SIGTERM/SIGINT.
+- Health checks: `/health` (liveness), `/ready` (readiness con check DB).
+- Timeouts: 15s read/write, 60s idle, 30s shutdown.
+- Listo para producción: Compatible con Kubernetes, Docker Swarm.
