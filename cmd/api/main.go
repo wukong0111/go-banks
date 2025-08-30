@@ -91,6 +91,10 @@ func run() error {
 	bankUpdaterService := services.NewBankUpdaterService(bankWriter, bankRepo)
 	bankUpdaterHandler := handlers.NewBankUpdaterHandler(bankUpdaterService)
 
+	// Initialize bank filters dependencies
+	bankFiltersService := services.NewBankFiltersService(bankRepo)
+	bankFiltersHandler := handlers.NewBankFiltersHandler(bankFiltersService)
+
 	// Initialize JWT service and auth middleware
 	jwtExpiry, err := time.ParseDuration(cfg.JWT.Expiry)
 	if err != nil {
@@ -126,6 +130,10 @@ func run() error {
 	api.PUT("/banks/:bankId",
 		authMiddleware.RequireAuth("banks:write"),
 		bankUpdaterHandler.UpdateBank)
+	// Bank filters endpoint requires banks:read permission
+	api.GET("/filters",
+		authMiddleware.RequireAuth("banks:read"),
+		bankFiltersHandler.GetFilters)
 
 	// Create HTTP server with timeouts
 	srv := &http.Server{

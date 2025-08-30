@@ -204,3 +204,115 @@ func (r *PostgresBankRepository) GetBankEnvironmentConfigs(ctx context.Context, 
 
 	return configs, nil
 }
+
+func (r *PostgresBankRepository) GetAvailableFilters(ctx context.Context) (*models.BankFilters, error) {
+	filters := &models.BankFilters{}
+
+	// Get countries with counts
+	countriesQuery := `
+		SELECT country, COUNT(*) as count
+		FROM banks
+		GROUP BY country
+		ORDER BY country
+	`
+
+	countryRows, err := r.db.Query(ctx, countriesQuery)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query countries: %w", err)
+	}
+	defer countryRows.Close()
+
+	for countryRows.Next() {
+		var country models.CountryFilter
+		if err := countryRows.Scan(&country.Code, &country.Count); err != nil {
+			return nil, fmt.Errorf("failed to scan country: %w", err)
+		}
+		// TODO: Add country name mapping if needed
+		country.Name = country.Code // Placeholder, could be enhanced with country name lookup
+		filters.Countries = append(filters.Countries, country)
+	}
+
+	if err := countryRows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating countries: %w", err)
+	}
+
+	// Get APIs with counts
+	apisQuery := `
+		SELECT api, COUNT(*) as count
+		FROM banks
+		GROUP BY api
+		ORDER BY api
+	`
+
+	apiRows, err := r.db.Query(ctx, apisQuery)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query APIs: %w", err)
+	}
+	defer apiRows.Close()
+
+	for apiRows.Next() {
+		var api models.APIFilter
+		if err := apiRows.Scan(&api.Type, &api.Count); err != nil {
+			return nil, fmt.Errorf("failed to scan API: %w", err)
+		}
+		filters.APIs = append(filters.APIs, api)
+	}
+
+	if err := apiRows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating APIs: %w", err)
+	}
+
+	// Get distinct environments
+	environmentsQuery := `
+		SELECT DISTINCT environment
+		FROM bank_environment_configs
+		ORDER BY environment
+	`
+
+	envRows, err := r.db.Query(ctx, environmentsQuery)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query environments: %w", err)
+	}
+	defer envRows.Close()
+
+	for envRows.Next() {
+		var env string
+		if err := envRows.Scan(&env); err != nil {
+			return nil, fmt.Errorf("failed to scan environment: %w", err)
+		}
+		filters.Environments = append(filters.Environments, env)
+	}
+
+	if err := envRows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating environments: %w", err)
+	}
+
+	// Get bank groups with counts
+	bankGroupsQuery := `
+		SELECT bg.group_id, bg.name, COUNT(b.bank_id) as count
+		FROM bank_groups bg
+		LEFT JOIN banks b ON bg.group_id = b.bank_group_id
+		GROUP BY bg.group_id, bg.name
+		ORDER BY bg.name
+	`
+
+	groupRows, err := r.db.Query(ctx, bankGroupsQuery)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query bank groups: %w", err)
+	}
+	defer groupRows.Close()
+
+	for groupRows.Next() {
+		var group models.BankGroupFilter
+		if err := groupRows.Scan(&group.GroupID, &group.Name, &group.Count); err != nil {
+			return nil, fmt.Errorf("failed to scan bank group: %w", err)
+		}
+		filters.BankGroups = append(filters.BankGroups, group)
+	}
+
+	if err := groupRows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating bank groups: %w", err)
+	}
+
+	return filters, nil
+}

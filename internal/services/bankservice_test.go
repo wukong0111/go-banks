@@ -49,6 +49,14 @@ func (m *MockBankRepository) GetBankEnvironmentConfigs(ctx context.Context, bank
 	return args.Get(0).(map[string]*models.BankEnvironmentConfig), args.Error(1)
 }
 
+func (m *MockBankRepository) GetAvailableFilters(ctx context.Context) (*models.BankFilters, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.BankFilters), args.Error(1)
+}
+
 func TestBankService_GetBanks(t *testing.T) {
 	// Test data
 	expectedBanks := []models.Bank{

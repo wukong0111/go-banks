@@ -21,6 +21,7 @@ type BankRepository interface {
 	GetBanks(ctx context.Context, filters *BankFilters) ([]models.Bank, *models.Pagination, error)
 	GetBankByID(ctx context.Context, bankID string) (*models.Bank, error)
 	GetBankEnvironmentConfigs(ctx context.Context, bankID string, environment string) (map[string]*models.BankEnvironmentConfig, error)
+	GetAvailableFilters(ctx context.Context) (*models.BankFilters, error)
 }
 
 // BankWriter defines the methods for creating and updating banks
