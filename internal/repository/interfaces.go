@@ -31,3 +31,8 @@ type BankWriter interface {
 	UpdateBank(ctx context.Context, bank *models.Bank) error
 	UpdateBankWithEnvironments(ctx context.Context, bank *models.Bank, configs []*models.BankEnvironmentConfig) error
 }
+
+// BankGroupRepository defines the methods that a bank group repository must implement
+type BankGroupRepository interface {
+	GetBankGroups(ctx context.Context) ([]models.BankGroup, error)
+}

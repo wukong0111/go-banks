@@ -95,6 +95,11 @@ func run() error {
 	bankFiltersService := services.NewBankFiltersService(bankRepo)
 	bankFiltersHandler := handlers.NewBankFiltersHandler(bankFiltersService)
 
+	// Initialize bank group dependencies
+	bankGroupRepo := repository.NewPostgresBankGroupRepository(dbPool)
+	bankGroupService := services.NewBankGroupService(bankGroupRepo)
+	bankGroupHandler := handlers.NewBankGroupHandler(bankGroupService)
+
 	// Initialize JWT service and auth middleware
 	jwtExpiry, err := time.ParseDuration(cfg.JWT.Expiry)
 	if err != nil {
@@ -134,6 +139,10 @@ func run() error {
 	api.GET("/filters",
 		authMiddleware.RequireAuth("banks:read"),
 		bankFiltersHandler.GetFilters)
+	// Bank groups endpoint requires banks:read permission
+	api.GET("/bank-groups",
+		authMiddleware.RequireAuth("banks:read"),
+		bankGroupHandler.GetBankGroups)
 
 	// Create HTTP server with timeouts
 	srv := &http.Server{
