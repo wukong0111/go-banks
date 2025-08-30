@@ -14,10 +14,10 @@ import (
 )
 
 type BankHandler struct {
-	bankService *services.BankService
+	bankService services.BankService
 }
 
-func NewBankHandler(bankService *services.BankService) *BankHandler {
+func NewBankHandler(bankService services.BankService) *BankHandler {
 	return &BankHandler{
 		bankService: bankService,
 	}

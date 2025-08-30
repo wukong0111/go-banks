@@ -13,17 +13,23 @@ import (
 	"github.com/wukong0111/go-banks/internal/repository"
 )
 
-type BankService struct {
+// BankService defines the interface for bank-related operations.
+type BankService interface {
+	GetBanks(ctx context.Context, filters *repository.BankFilters) ([]models.Bank, *models.Pagination, error)
+	GetBankDetails(ctx context.Context, bankID, environment string) (models.BankDetails, error)
+}
+
+type bankService struct {
 	bankRepo repository.BankRepository
 }
 
-func NewBankService(bankRepo repository.BankRepository) *BankService {
-	return &BankService{
+func NewBankService(bankRepo repository.BankRepository) BankService {
+	return &bankService{
 		bankRepo: bankRepo,
 	}
 }
 
-func (s *BankService) GetBanks(ctx context.Context, filters *repository.BankFilters) ([]models.Bank, *models.Pagination, error) {
+func (s *bankService) GetBanks(ctx context.Context, filters *repository.BankFilters) ([]models.Bank, *models.Pagination, error) {
 	// Apply business rules and validation
 	s.normalizeFilters(filters)
 
@@ -32,7 +38,7 @@ func (s *BankService) GetBanks(ctx context.Context, filters *repository.BankFilt
 }
 
 // normalizeFilters applies business rules to filter parameters
-func (s *BankService) normalizeFilters(filters *repository.BankFilters) {
+func (s *bankService) normalizeFilters(filters *repository.BankFilters) {
 	const (
 		DefaultPage        = 1
 		DefaultLimit       = 20
@@ -59,7 +65,7 @@ func (s *BankService) normalizeFilters(filters *repository.BankFilters) {
 	}
 }
 
-func (s *BankService) GetBankDetails(ctx context.Context, bankID, environment string) (models.BankDetails, error) {
+func (s *bankService) GetBankDetails(ctx context.Context, bankID, environment string) (models.BankDetails, error) {
 	// If specific environment is requested, validate it first
 	if environment != "" {
 		if !s.isValidEnvironment(environment) {
@@ -104,7 +110,7 @@ func (s *BankService) GetBankDetails(ctx context.Context, bankID, environment st
 }
 
 // isValidEnvironment validates if the provided environment is valid
-func (s *BankService) isValidEnvironment(env string) bool {
+func (s *bankService) isValidEnvironment(env string) bool {
 	validEnvironments := []string{"sandbox", "production", "uat", "test"}
 	return slices.Contains(validEnvironments, env)
 }
