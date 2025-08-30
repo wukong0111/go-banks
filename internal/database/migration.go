@@ -37,7 +37,7 @@ func NewMigrationService(cfg *config.DatabaseConfig) (*MigrationService, error) 
 
 func (ms *MigrationService) Up() error {
 	currentVersion, dirty, versionErr := ms.migrate.Version()
-	
+
 	err := ms.migrate.Up()
 	if err != nil && err != migrate.ErrNoChange {
 		slog.Error("migration up failed",
@@ -52,7 +52,7 @@ func (ms *MigrationService) Up() error {
 		)
 		return err
 	}
-	
+
 	if err == nil {
 		newVersion, _, _ := ms.migrate.Version()
 		slog.Info("migration up completed successfully",
@@ -65,13 +65,13 @@ func (ms *MigrationService) Up() error {
 			"to_version", newVersion,
 		)
 	}
-	
+
 	return nil
 }
 
 func (ms *MigrationService) Down() error {
 	currentVersion, dirty, versionErr := ms.migrate.Version()
-	
+
 	err := ms.migrate.Down()
 	if err != nil && err != migrate.ErrNoChange {
 		slog.Error("migration down failed",
@@ -86,7 +86,7 @@ func (ms *MigrationService) Down() error {
 		)
 		return err
 	}
-	
+
 	if err == nil {
 		newVersion, _, _ := ms.migrate.Version()
 		slog.Info("migration down completed successfully",
@@ -99,13 +99,13 @@ func (ms *MigrationService) Down() error {
 			"to_version", newVersion,
 		)
 	}
-	
+
 	return nil
 }
 
 func (ms *MigrationService) Steps(n int) error {
 	currentVersion, dirty, versionErr := ms.migrate.Version()
-	
+
 	err := ms.migrate.Steps(n)
 	if err != nil && err != migrate.ErrNoChange {
 		slog.Error("migration steps failed",
@@ -121,7 +121,7 @@ func (ms *MigrationService) Steps(n int) error {
 		)
 		return err
 	}
-	
+
 	if err == nil {
 		newVersion, _, _ := ms.migrate.Version()
 		slog.Info("migration steps completed successfully",
@@ -135,7 +135,7 @@ func (ms *MigrationService) Steps(n int) error {
 			"to_version", newVersion,
 		)
 	}
-	
+
 	return nil
 }
 
@@ -157,7 +157,7 @@ func (ms *MigrationService) Close() error {
 		)
 		return databaseErr
 	}
-	
+
 	slog.Debug("migration service closed successfully")
 	return nil
 }

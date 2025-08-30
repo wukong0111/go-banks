@@ -342,10 +342,12 @@ func TestBankCreatorService_RequestToBank_InvalidBankGroupID(t *testing.T) {
 		BankGroupID:            &invalidGroupID,
 	}
 
-	bank := service.requestToBank(request)
+	bank, err := service.requestToBank(request)
 
-	// Invalid UUID should result in nil BankGroupID
-	assert.Nil(t, bank.BankGroupID)
+	// Invalid UUID should result in error
+	require.Error(t, err)
+	assert.Nil(t, bank)
+	assert.Contains(t, err.Error(), "invalid bank_group_id format")
 }
 
 func TestBankCreatorService_RequestToBank_ValidBankGroupID(t *testing.T) {
@@ -364,8 +366,36 @@ func TestBankCreatorService_RequestToBank_ValidBankGroupID(t *testing.T) {
 		BankGroupID:            &validGroupID,
 	}
 
-	bank := service.requestToBank(request)
+	bank, err := service.requestToBank(request)
 
+	require.NoError(t, err)
 	require.NotNil(t, bank.BankGroupID)
 	assert.Equal(t, validGroupID, bank.BankGroupID.String())
+}
+
+func TestBankCreatorService_CreateBank_InvalidBankGroupID(t *testing.T) {
+	mockWriter := new(MockBankWriter)
+	service := NewBankCreatorService(mockWriter)
+
+	invalidGroupID := "not-a-valid-uuid"
+	request := &CreateBankRequest{
+		BankID:                 "invalid_group_bank_008",
+		Name:                   "Bank with Invalid Group",
+		BankCodes:              []string{"0008"},
+		API:                    "berlin_group",
+		APIVersion:             "1.3.6",
+		ASPSP:                  "test_aspsp",
+		Country:                "LU",
+		AuthTypeChoiceRequired: false,
+		BankGroupID:            &invalidGroupID,
+	}
+
+	bank, err := service.CreateBank(context.Background(), request)
+	require.Error(t, err)
+	assert.Nil(t, bank)
+	assert.Contains(t, err.Error(), "invalid bank_group_id format")
+
+	// Writer should not be called when validation fails
+	mockWriter.AssertNotCalled(t, "CreateBank")
+	mockWriter.AssertNotCalled(t, "CreateBankWithEnvironments")
 }

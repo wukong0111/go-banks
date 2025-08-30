@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"fmt"
-	"log/slog"
 
 	"github.com/google/uuid"
 
@@ -66,7 +65,10 @@ func NewBankCreatorService(writer repository.BankWriter) *BankCreatorService {
 }
 
 func (s *BankCreatorService) CreateBank(ctx context.Context, request *CreateBankRequest) (*models.Bank, error) {
-	bank := s.requestToBank(request)
+	bank, err := s.requestToBank(request)
+	if err != nil {
+		return nil, err
+	}
 
 	switch {
 	case request.Environments != nil || request.Configuration != nil:
@@ -88,7 +90,7 @@ func (s *BankCreatorService) CreateBank(ctx context.Context, request *CreateBank
 	return bank, nil
 }
 
-func (s *BankCreatorService) requestToBank(request *CreateBankRequest) *models.Bank {
+func (s *BankCreatorService) requestToBank(request *CreateBankRequest) (*models.Bank, error) {
 	// BankID is now required, use it directly
 	bankID := request.BankID
 
@@ -96,16 +98,9 @@ func (s *BankCreatorService) requestToBank(request *CreateBankRequest) *models.B
 	if request.BankGroupID != nil && *request.BankGroupID != "" {
 		parsed, err := uuid.Parse(*request.BankGroupID)
 		if err != nil {
-			slog.Warn("invalid bank group ID format, ignoring bank group assignment",
-				"error", err.Error(),
-				"bank_group_id", *request.BankGroupID,
-				"bank_name", request.Name,
-				"bank_will_be_created_without_group", true,
-			)
-			// Continue without bankGroupID (backwards compatibility)
-		} else {
-			bankGroupID = &parsed
+			return nil, fmt.Errorf("invalid bank_group_id format: %w", err)
 		}
+		bankGroupID = &parsed
 	}
 
 	return &models.Bank{
@@ -125,7 +120,7 @@ func (s *BankCreatorService) requestToBank(request *CreateBankRequest) *models.B
 		Keywords:               request.Keywords,
 		Attribute:              request.Attribute,
 		AuthTypeChoiceRequired: request.AuthTypeChoiceRequired,
-	}
+	}, nil
 }
 
 func (s *BankCreatorService) buildEnvironmentConfigs(request *CreateBankRequest, bankID string) []*models.BankEnvironmentConfig {
