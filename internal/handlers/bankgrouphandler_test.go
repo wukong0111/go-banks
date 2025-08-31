@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/wukong0111/go-banks/internal/models"
+	"github.com/wukong0111/go-banks/internal/services"
 )
 
 type MockBankGroupService struct {
@@ -27,11 +28,24 @@ func (m *MockBankGroupService) GetBankGroups(ctx context.Context) ([]models.Bank
 	return args.Get(0).([]models.BankGroup), args.Error(1)
 }
 
+type MockBankGroupCreator struct {
+	mock.Mock
+}
+
+func (m *MockBankGroupCreator) CreateBankGroup(ctx context.Context, request *services.CreateBankGroupRequest) (*models.BankGroup, error) {
+	args := m.Called(ctx, request)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.BankGroup), args.Error(1)
+}
+
 func TestBankGroupHandler_GetBankGroups_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	mockService := new(MockBankGroupService)
-	handler := NewBankGroupHandler(mockService)
+	mockCreatorService := new(MockBankGroupCreator)
+	handler := NewBankGroupHandler(mockService, mockCreatorService)
 
 	// Mock data
 	desc := "Test description"
@@ -87,7 +101,8 @@ func TestBankGroupHandler_GetBankGroups_EmptyResult(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	mockService := new(MockBankGroupService)
-	handler := NewBankGroupHandler(mockService)
+	mockCreatorService := new(MockBankGroupCreator)
+	handler := NewBankGroupHandler(mockService, mockCreatorService)
 
 	// Setup mock expectations
 	mockService.On("GetBankGroups", mock.Anything).Return([]models.BankGroup{}, nil)
@@ -117,7 +132,8 @@ func TestBankGroupHandler_GetBankGroups_ServiceError(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	mockService := new(MockBankGroupService)
-	handler := NewBankGroupHandler(mockService)
+	mockCreatorService := new(MockBankGroupCreator)
+	handler := NewBankGroupHandler(mockService, mockCreatorService)
 
 	expectedError := errors.New("database connection failed")
 

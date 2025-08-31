@@ -9,7 +9,7 @@ CREATE TABLE banks (
     aspsp VARCHAR(255) NOT NULL,
     product_code VARCHAR(255),
     country CHAR(2) NOT NULL,
-    bank_group_id UUID REFERENCES bank_groups(id),
+    bank_group_id UUID REFERENCES bank_groups(group_id),
     logo_url TEXT,
     documentation TEXT,
     keywords JSONB,

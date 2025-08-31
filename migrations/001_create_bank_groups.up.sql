@@ -1,7 +1,9 @@
 CREATE TABLE bank_groups (
-    id UUID PRIMARY KEY,
+    group_id UUID PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    show_grouped SMALLINT NOT NULL,
+    description TEXT,
+    logo_url VARCHAR(512),
+    website VARCHAR(512),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
