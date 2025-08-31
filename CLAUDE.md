@@ -91,9 +91,12 @@ Proyecto Go para API de servicio bancario. Usa Gin para framework web, PostgreSQ
 - `mock` para mocking.
 
 **Convención de Nombres:**
-- Funciones de test: `TestTypeMethodScenario` (sin underscores para evitar warnings del linter)
-- Ejemplos: `TestBankGroupHandlerUpdateBankGroupSuccess`, `TestServiceCreateBankValidation`
-- Evitar: `TestBankGroupHandler_UpdateBankGroup_Success` (genera warnings de revive)
+- **Archivos Go (no tests)**: Nombres simples en minúsculas, sin underscores ni camelCase
+  - ✅ Correcto: `secretprovider.go`, `jwtprovider.go`, `tcpserver.go`
+  - ❌ Incorrecto: `file_secret_provider.go`, `tcp_server.go`, `secretProvider.go`
+- **Funciones de test**: `TestTypeMethodScenario` (sin underscores para evitar warnings del linter)
+  - Ejemplos: `TestBankGroupHandlerUpdateBankGroupSuccess`, `TestServiceCreateBankValidation`
+  - Evitar: `TestBankGroupHandler_UpdateBankGroup_Success` (genera warnings de revive)
 
 ### Configuración de Linter
 
