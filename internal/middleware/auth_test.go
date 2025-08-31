@@ -12,8 +12,15 @@ import (
 
 	"github.com/wukong0111/go-banks/internal/auth"
 	"github.com/wukong0111/go-banks/internal/logger"
-	"github.com/wukong0111/go-banks/internal/secrets"
 )
+
+type testSecretProvider struct {
+	secret string
+}
+
+func (t *testSecretProvider) GetSecret() (string, error) {
+	return t.secret, nil
+}
 
 func init() {
 	gin.SetMode(gin.TestMode)
@@ -22,7 +29,7 @@ func init() {
 func TestAuthMiddleware_RequireAuth_ValidToken(t *testing.T) {
 	// Setup
 	testLogger := logger.NewDiscardLogger()
-	mockProvider := secrets.NewMockSecretProvider("test-secret")
+	mockProvider := &testSecretProvider{secret: "test-secret"}
 	jwtService, err := auth.NewJWTService(mockProvider, time.Hour, testLogger)
 	require.NoError(t, err)
 	middleware := NewAuthMiddleware(jwtService)
@@ -52,7 +59,7 @@ func TestAuthMiddleware_RequireAuth_ValidToken(t *testing.T) {
 func TestAuthMiddleware_RequireAuth_MissingAuthorizationHeader(t *testing.T) {
 	// Setup
 	testLogger := logger.NewDiscardLogger()
-	mockProvider := secrets.NewMockSecretProvider("test-secret")
+	mockProvider := &testSecretProvider{secret: "test-secret"}
 	jwtService, err := auth.NewJWTService(mockProvider, time.Hour, testLogger)
 	require.NoError(t, err)
 	middleware := NewAuthMiddleware(jwtService)
@@ -77,7 +84,7 @@ func TestAuthMiddleware_RequireAuth_MissingAuthorizationHeader(t *testing.T) {
 func TestAuthMiddleware_RequireAuth_InvalidBearerFormat(t *testing.T) {
 	// Setup
 	testLogger := logger.NewDiscardLogger()
-	mockProvider := secrets.NewMockSecretProvider("test-secret")
+	mockProvider := &testSecretProvider{secret: "test-secret"}
 	jwtService, err := auth.NewJWTService(mockProvider, time.Hour, testLogger)
 	require.NoError(t, err)
 	middleware := NewAuthMiddleware(jwtService)
@@ -115,7 +122,7 @@ func TestAuthMiddleware_RequireAuth_InvalidBearerFormat(t *testing.T) {
 func TestAuthMiddleware_RequireAuth_InvalidToken(t *testing.T) {
 	// Setup
 	testLogger := logger.NewDiscardLogger()
-	mockProvider := secrets.NewMockSecretProvider("test-secret")
+	mockProvider := &testSecretProvider{secret: "test-secret"}
 	jwtService, err := auth.NewJWTService(mockProvider, time.Hour, testLogger)
 	require.NoError(t, err)
 	middleware := NewAuthMiddleware(jwtService)
@@ -141,7 +148,7 @@ func TestAuthMiddleware_RequireAuth_InvalidToken(t *testing.T) {
 func TestAuthMiddleware_RequireAuth_ExpiredToken(t *testing.T) {
 	// Setup with very short expiry
 	testLogger := logger.NewDiscardLogger()
-	mockProvider := secrets.NewMockSecretProvider("test-secret")
+	mockProvider := &testSecretProvider{secret: "test-secret"}
 	jwtService, err := auth.NewJWTService(mockProvider, time.Nanosecond, testLogger)
 	require.NoError(t, err)
 	middleware := NewAuthMiddleware(jwtService)
@@ -174,7 +181,7 @@ func TestAuthMiddleware_RequireAuth_ExpiredToken(t *testing.T) {
 func TestAuthMiddleware_RequireAuth_InsufficientPermissions(t *testing.T) {
 	// Setup
 	testLogger := logger.NewDiscardLogger()
-	mockProvider := secrets.NewMockSecretProvider("test-secret")
+	mockProvider := &testSecretProvider{secret: "test-secret"}
 	jwtService, err := auth.NewJWTService(mockProvider, time.Hour, testLogger)
 	require.NoError(t, err)
 	middleware := NewAuthMiddleware(jwtService)
@@ -204,7 +211,7 @@ func TestAuthMiddleware_RequireAuth_InsufficientPermissions(t *testing.T) {
 func TestAuthMiddleware_RequireAuth_MultiplePermissions(t *testing.T) {
 	// Setup
 	testLogger := logger.NewDiscardLogger()
-	mockProvider := secrets.NewMockSecretProvider("test-secret")
+	mockProvider := &testSecretProvider{secret: "test-secret"}
 	jwtService, err := auth.NewJWTService(mockProvider, time.Hour, testLogger)
 	require.NoError(t, err)
 	middleware := NewAuthMiddleware(jwtService)
@@ -234,7 +241,7 @@ func TestAuthMiddleware_RequireAuth_MultiplePermissions(t *testing.T) {
 func TestAuthMiddleware_RequireAuth_NoPermissionsRequired(t *testing.T) {
 	// Setup
 	testLogger := logger.NewDiscardLogger()
-	mockProvider := secrets.NewMockSecretProvider("test-secret")
+	mockProvider := &testSecretProvider{secret: "test-secret"}
 	jwtService, err := auth.NewJWTService(mockProvider, time.Hour, testLogger)
 	require.NoError(t, err)
 	middleware := NewAuthMiddleware(jwtService)
@@ -264,7 +271,7 @@ func TestAuthMiddleware_RequireAuth_NoPermissionsRequired(t *testing.T) {
 func TestAuthMiddleware_GetClaims(t *testing.T) {
 	// Setup
 	testLogger := logger.NewDiscardLogger()
-	mockProvider := secrets.NewMockSecretProvider("test-secret")
+	mockProvider := &testSecretProvider{secret: "test-secret"}
 	jwtService, err := auth.NewJWTService(mockProvider, time.Hour, testLogger)
 	require.NoError(t, err)
 	middleware := NewAuthMiddleware(jwtService)
@@ -311,7 +318,7 @@ func TestAuthMiddleware_GetClaims(t *testing.T) {
 func TestAuthMiddleware_GetPermissions(t *testing.T) {
 	// Setup
 	testLogger := logger.NewDiscardLogger()
-	mockProvider := secrets.NewMockSecretProvider("test-secret")
+	mockProvider := &testSecretProvider{secret: "test-secret"}
 	jwtService, err := auth.NewJWTService(mockProvider, time.Hour, testLogger)
 	require.NoError(t, err)
 	middleware := NewAuthMiddleware(jwtService)
