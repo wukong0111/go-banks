@@ -9,6 +9,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/wukong0111/go-banks/internal/logger"
+	"github.com/wukong0111/go-banks/internal/secrets"
 )
 
 // Claims represents the JWT claims for our API
@@ -24,13 +25,19 @@ type JWTService struct {
 	logger logger.Logger
 }
 
-// NewJWTService creates a new JWT service with the provided secret, expiry and logger
-func NewJWTService(secret string, expiry time.Duration, log logger.Logger) *JWTService {
+// NewJWTService creates a new JWT service with the provided secret provider, expiry and logger
+func NewJWTService(provider secrets.SecretProvider, expiry time.Duration, log logger.Logger) (*JWTService, error) {
+	// Get the secret from the provider on initialization
+	secret, err := provider.GetSecret()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get JWT secret: %w", err)
+	}
+
 	return &JWTService{
 		secret: []byte(secret),
 		expiry: expiry,
 		logger: log,
-	}
+	}, nil
 }
 
 // GenerateToken generates a JWT token with the given permissions

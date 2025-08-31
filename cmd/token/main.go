@@ -13,6 +13,7 @@ import (
 	"github.com/wukong0111/go-banks/internal/auth"
 	"github.com/wukong0111/go-banks/internal/config"
 	"github.com/wukong0111/go-banks/internal/logger"
+	"github.com/wukong0111/go-banks/internal/secrets"
 )
 
 func main() {
@@ -80,7 +81,11 @@ func main() {
 
 	// Create JWT service
 	tokenLogger := logger.NewDiscardLogger()
-	jwtService := auth.NewJWTService(cfg.JWT.Secret, expiry, tokenLogger)
+	jwtSecretProvider := secrets.NewJWTEnvProvider()
+	jwtService, err := auth.NewJWTService(jwtSecretProvider, expiry, tokenLogger)
+	if err != nil {
+		log.Fatalf("Failed to initialize JWT service: %v", err)
+	}
 
 	// Generate token
 	token, err := jwtService.GenerateToken(permissionsList)

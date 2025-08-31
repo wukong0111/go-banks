@@ -9,13 +9,16 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/wukong0111/go-banks/internal/logger"
+	"github.com/wukong0111/go-banks/internal/secrets"
 )
 
 func TestJWTService_GenerateToken(t *testing.T) {
 	secret := "test-secret-key"
 	expiry := time.Hour
 	testLogger := logger.NewDiscardLogger()
-	service := NewJWTService(secret, expiry, testLogger)
+	mockProvider := secrets.NewMockSecretProvider(secret)
+	service, err := NewJWTService(mockProvider, expiry, testLogger)
+	require.NoError(t, err)
 
 	permissions := []string{"banks:read", "banks:write"}
 
@@ -37,17 +40,21 @@ func TestJWTService_GenerateToken(t *testing.T) {
 
 func TestJWTService_ValidateToken_InvalidToken(t *testing.T) {
 	testLogger := logger.NewDiscardLogger()
-	service := NewJWTService("test-secret", time.Hour, testLogger)
+	mockProvider := secrets.NewMockSecretProvider("test-secret")
+	service, err := NewJWTService(mockProvider, time.Hour, testLogger)
+	require.NoError(t, err)
 
 	// Test with invalid token
-	_, err := service.ValidateToken("invalid-token")
+	_, err = service.ValidateToken("invalid-token")
 	assert.Error(t, err)
 }
 
 func TestJWTService_ValidateToken_ExpiredToken(t *testing.T) {
 	secret := "test-secret-key"
 	testLogger := logger.NewDiscardLogger()
-	service := NewJWTService(secret, -time.Hour, testLogger) // Expired
+	mockProvider := secrets.NewMockSecretProvider(secret)
+	service, err := NewJWTService(mockProvider, -time.Hour, testLogger) // Expired
+	require.NoError(t, err)
 
 	permissions := []string{"banks:read"}
 	token, err := service.GenerateToken(permissions)
@@ -63,8 +70,13 @@ func TestJWTService_ValidateToken_ExpiredToken(t *testing.T) {
 
 func TestJWTService_ValidateToken_WrongSecret(t *testing.T) {
 	testLogger := logger.NewDiscardLogger()
-	service1 := NewJWTService("secret1", time.Hour, testLogger)
-	service2 := NewJWTService("secret2", time.Hour, testLogger)
+	mockProvider1 := secrets.NewMockSecretProvider("secret1")
+	service1, err := NewJWTService(mockProvider1, time.Hour, testLogger)
+	require.NoError(t, err)
+
+	mockProvider2 := secrets.NewMockSecretProvider("secret2")
+	service2, err := NewJWTService(mockProvider2, time.Hour, testLogger)
+	require.NoError(t, err)
 
 	permissions := []string{"banks:read"}
 	token, err := service1.GenerateToken(permissions)
@@ -130,7 +142,9 @@ func TestClaims_HasAllPermissions(t *testing.T) {
 
 func TestJWTService_TokenStructure(t *testing.T) {
 	testLogger := logger.NewDiscardLogger()
-	service := NewJWTService("test-secret", time.Hour, testLogger)
+	mockProvider := secrets.NewMockSecretProvider("test-secret")
+	service, err := NewJWTService(mockProvider, time.Hour, testLogger)
+	require.NoError(t, err)
 	permissions := []string{"banks:read"}
 
 	tokenString, err := service.GenerateToken(permissions)

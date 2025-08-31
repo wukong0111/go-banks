@@ -9,6 +9,7 @@ Proyecto Go para API de servicio bancario. Usa Gin para framework web, PostgreSQ
 - Docker: Contenerización.
 - JWT: Seguridad con tokens.
 - golang-migrate: Migraciones de DB.
+- Use ripgrep instead grep. Example: Instead of this 'grep -r "searchterm"'. Use this:  'rg "searchterm"'.
 
 **Arquitectura:**
 - `cmd/`: Aplicaciones principales (API, migraciones, seeding).

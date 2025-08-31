@@ -20,6 +20,7 @@ import (
 	"github.com/wukong0111/go-banks/internal/logger"
 	"github.com/wukong0111/go-banks/internal/middleware"
 	"github.com/wukong0111/go-banks/internal/repository"
+	"github.com/wukong0111/go-banks/internal/secrets"
 	"github.com/wukong0111/go-banks/internal/services"
 )
 
@@ -108,7 +109,11 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("invalid JWT expiry duration: %w", err)
 	}
-	jwtService := auth.NewJWTService(cfg.JWT.Secret, jwtExpiry, appLogger)
+	jwtSecretProvider := secrets.NewJWTEnvProvider()
+	jwtService, err := auth.NewJWTService(jwtSecretProvider, jwtExpiry, appLogger)
+	if err != nil {
+		return fmt.Errorf("failed to initialize JWT service: %w", err)
+	}
 	authMiddleware := middleware.NewAuthMiddleware(jwtService)
 
 	// Setup Gin router
