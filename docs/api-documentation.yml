@@ -452,6 +452,54 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
 
+    post:
+      summary: Crear Nuevo Grupo Bancario
+      description: |
+        Crea un nuevo grupo bancario con la información básica.
+        Requiere permiso `banks:write`.
+      tags:
+        - Bank Groups
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBankGroupRequest'
+            examples:
+              basic:
+                summary: Ejemplo básico de grupo bancario
+                value:
+                  group_id: "550e8400-e29b-41d4-a716-446655440000"
+                  name: "Grupo BBVA"
+                  description: "Grupo bancario BBVA con operaciones en múltiples países"
+                  logo_url: "https://example.com/logos/bbva.png"
+                  website: "https://www.bbva.com"
+      responses:
+        '201':
+          description: Grupo bancario creado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateBankGroupResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: El grupo bancario ya existe
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                        example: "Bank group with ID '550e8400-e29b-41d4-a716-446655440000' already exists"
+
   /api/bank-groups/{groupId}:
     get:
       summary: Obtener Detalles de Grupo Bancario
@@ -464,10 +512,11 @@ paths:
         - name: groupId
           in: path
           required: true
-          description: ID único del grupo bancario
+          description: ID único del grupo bancario (UUID)
           schema:
             type: string
-            example: "santander_group"
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
       responses:
         '200':
           description: Detalles del grupo bancario obtenidos exitosamente
@@ -480,6 +529,67 @@ paths:
                     properties:
                       data:
                         $ref: '#/components/schemas/BankGroup'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Grupo bancario no encontrado
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                        example: "Bank group not found"
+
+    put:
+      summary: Actualizar Grupo Bancario
+      description: |
+        Actualiza un grupo bancario existente.
+        Requiere permiso `banks:write`.
+      tags:
+        - Bank Groups
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          description: ID único del grupo bancario a actualizar (UUID)
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBankGroupRequest'
+            examples:
+              partial:
+                summary: Actualización parcial
+                value:
+                  name: "Nuevo Grupo BBVA"
+                  description: "Descripción actualizada del grupo bancario"
+              complete:
+                summary: Actualización completa
+                value:
+                  name: "Grupo BBVA Internacional"
+                  description: "Grupo bancario BBVA con presencia global"
+                  logo_url: "https://example.com/logos/bbva-new.png"
+                  website: "https://www.bbva.com/es/"
+      responses:
+        '200':
+          description: Grupo bancario actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateBankGroupResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1133,8 +1243,9 @@ components:
       properties:
         group_id:
           type: string
-          description: Identificador único del grupo
-          example: "santander_group"
+          format: uuid
+          description: Identificador único del grupo (UUID)
+          example: "550e8400-e29b-41d4-a716-446655440000"
         name:
           type: string
           description: Nombre del grupo bancario
@@ -1162,6 +1273,89 @@ components:
       required:
         - group_id
         - name
+
+    CreateBankGroupRequest:
+      type: object
+      properties:
+        group_id:
+          type: string
+          format: uuid
+          description: Identificador único del grupo (UUID)
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        name:
+          type: string
+          description: Nombre del grupo bancario
+          example: "Grupo BBVA"
+        description:
+          type: string
+          nullable: true
+          description: Descripción del grupo
+          example: "Grupo bancario BBVA con operaciones internacionales"
+        logo_url:
+          type: string
+          nullable: true
+          description: URL del logo del grupo
+          example: "https://example.com/logos/bbva.png"
+        website:
+          type: string
+          nullable: true
+          description: Sitio web del grupo
+          example: "https://www.bbva.com"
+      required:
+        - group_id
+        - name
+
+    CreateBankGroupResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            success:
+              type: boolean
+              enum: [true]
+            data:
+              $ref: '#/components/schemas/BankGroup'
+            message:
+              type: string
+              example: "Bank group created successfully"
+
+    UpdateBankGroupRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Nombre del grupo bancario
+          example: "Nuevo Grupo BBVA"
+        description:
+          type: string
+          nullable: true
+          description: Descripción del grupo
+          example: "Descripción actualizada del grupo bancario"
+        logo_url:
+          type: string
+          nullable: true
+          description: URL del logo del grupo
+          example: "https://example.com/logos/bbva-new.png"
+        website:
+          type: string
+          nullable: true
+          description: Sitio web del grupo
+          example: "https://www.bbva.com/es/"
+      description: Todos los campos son opcionales para actualizaciones parciales
+
+    UpdateBankGroupResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            success:
+              type: boolean
+              enum: [true]
+            data:
+              $ref: '#/components/schemas/BankGroup'
+            message:
+              type: string
+              example: "Bank group updated successfully"
 
     BankFilters:
       type: object
@@ -1211,7 +1405,8 @@ components:
             properties:
               group_id:
                 type: string
-                example: "santander_group"
+                format: uuid
+                example: "550e8400-e29b-41d4-a716-446655440000"
               name:
                 type: string
                 example: "Grupo Santander"
