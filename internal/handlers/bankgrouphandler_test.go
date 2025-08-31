@@ -40,12 +40,20 @@ func (m *MockBankGroupCreator) CreateBankGroup(ctx context.Context, request *ser
 	return args.Get(0).(*models.BankGroup), args.Error(1)
 }
 
+// Simple dummy updater mock for these tests
+type dummyUpdaterService struct{}
+
+func (d *dummyUpdaterService) UpdateBankGroup(_ context.Context, _ string, _ *services.UpdateBankGroupRequest) (*models.BankGroup, error) {
+	return nil, nil
+}
+
 func TestBankGroupHandler_GetBankGroups_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	mockService := new(MockBankGroupService)
 	mockCreatorService := new(MockBankGroupCreator)
-	handler := NewBankGroupHandler(mockService, mockCreatorService)
+	mockUpdaterService := &dummyUpdaterService{}
+	handler := NewBankGroupHandler(mockService, mockCreatorService, mockUpdaterService)
 
 	// Mock data
 	desc := "Test description"
@@ -102,7 +110,8 @@ func TestBankGroupHandler_GetBankGroups_EmptyResult(t *testing.T) {
 
 	mockService := new(MockBankGroupService)
 	mockCreatorService := new(MockBankGroupCreator)
-	handler := NewBankGroupHandler(mockService, mockCreatorService)
+	mockUpdaterService := &dummyUpdaterService{}
+	handler := NewBankGroupHandler(mockService, mockCreatorService, mockUpdaterService)
 
 	// Setup mock expectations
 	mockService.On("GetBankGroups", mock.Anything).Return([]models.BankGroup{}, nil)
@@ -133,7 +142,8 @@ func TestBankGroupHandler_GetBankGroups_ServiceError(t *testing.T) {
 
 	mockService := new(MockBankGroupService)
 	mockCreatorService := new(MockBankGroupCreator)
-	handler := NewBankGroupHandler(mockService, mockCreatorService)
+	mockUpdaterService := &dummyUpdaterService{}
+	handler := NewBankGroupHandler(mockService, mockCreatorService, mockUpdaterService)
 
 	expectedError := errors.New("database connection failed")
 

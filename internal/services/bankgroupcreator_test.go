@@ -22,6 +22,11 @@ func (m *MockBankGroupWriter) CreateBankGroup(ctx context.Context, bankGroup *mo
 	return args.Error(0)
 }
 
+func (m *MockBankGroupWriter) UpdateBankGroup(ctx context.Context, bankGroup *models.BankGroup) error {
+	args := m.Called(ctx, bankGroup)
+	return args.Error(0)
+}
+
 func TestBankGroupCreatorService_CreateBankGroup_Success(t *testing.T) {
 	ctx := context.Background()
 	mockWriter := new(MockBankGroupWriter)

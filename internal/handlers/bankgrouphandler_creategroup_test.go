@@ -19,12 +19,15 @@ import (
 
 // MockBankGroupCreator is defined in bankgrouphandler_test.go
 
+// dummyUpdaterService is defined in bankgrouphandler_test.go
+
 func TestBankGroupHandler_CreateBankGroup_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	mockGroupService := new(MockBankGroupService)
 	mockCreatorService := new(MockBankGroupCreator)
-	handler := NewBankGroupHandler(mockGroupService, mockCreatorService)
+	mockUpdaterService := &dummyUpdaterService{}
+	handler := NewBankGroupHandler(mockGroupService, mockCreatorService, mockUpdaterService)
 
 	validUUID := uuid.New()
 	request := services.CreateBankGroupRequest{
@@ -73,7 +76,8 @@ func TestBankGroupHandler_CreateBankGroup_InvalidJSON(t *testing.T) {
 
 	mockGroupService := new(MockBankGroupService)
 	mockCreatorService := new(MockBankGroupCreator)
-	handler := NewBankGroupHandler(mockGroupService, mockCreatorService)
+	mockUpdaterService := &dummyUpdaterService{}
+	handler := NewBankGroupHandler(mockGroupService, mockCreatorService, mockUpdaterService)
 
 	// Create request with invalid JSON
 	req, _ := http.NewRequest("POST", "/api/bank-groups", bytes.NewBuffer([]byte("invalid json")))
@@ -100,7 +104,8 @@ func TestBankGroupHandler_CreateBankGroup_MissingRequiredField(t *testing.T) {
 
 	mockGroupService := new(MockBankGroupService)
 	mockCreatorService := new(MockBankGroupCreator)
-	handler := NewBankGroupHandler(mockGroupService, mockCreatorService)
+	mockUpdaterService := &dummyUpdaterService{}
+	handler := NewBankGroupHandler(mockGroupService, mockCreatorService, mockUpdaterService)
 
 	// Request missing required field (name)
 	request := map[string]any{
@@ -132,7 +137,8 @@ func TestBankGroupHandler_CreateBankGroup_InvalidUUID(t *testing.T) {
 
 	mockGroupService := new(MockBankGroupService)
 	mockCreatorService := new(MockBankGroupCreator)
-	handler := NewBankGroupHandler(mockGroupService, mockCreatorService)
+	mockUpdaterService := &dummyUpdaterService{}
+	handler := NewBankGroupHandler(mockGroupService, mockCreatorService, mockUpdaterService)
 
 	request := services.CreateBankGroupRequest{
 		GroupID: "invalid-uuid",
@@ -168,7 +174,8 @@ func TestBankGroupHandler_CreateBankGroup_EmptyName(t *testing.T) {
 
 	mockGroupService := new(MockBankGroupService)
 	mockCreatorService := new(MockBankGroupCreator)
-	handler := NewBankGroupHandler(mockGroupService, mockCreatorService)
+	mockUpdaterService := &dummyUpdaterService{}
+	handler := NewBankGroupHandler(mockGroupService, mockCreatorService, mockUpdaterService)
 
 	request := services.CreateBankGroupRequest{
 		GroupID: uuid.New().String(),
@@ -204,7 +211,8 @@ func TestBankGroupHandler_CreateBankGroup_DuplicateGroup(t *testing.T) {
 
 	mockGroupService := new(MockBankGroupService)
 	mockCreatorService := new(MockBankGroupCreator)
-	handler := NewBankGroupHandler(mockGroupService, mockCreatorService)
+	mockUpdaterService := &dummyUpdaterService{}
+	handler := NewBankGroupHandler(mockGroupService, mockCreatorService, mockUpdaterService)
 
 	validUUID := uuid.New().String()
 	request := services.CreateBankGroupRequest{
@@ -241,7 +249,8 @@ func TestBankGroupHandler_CreateBankGroup_InternalServerError(t *testing.T) {
 
 	mockGroupService := new(MockBankGroupService)
 	mockCreatorService := new(MockBankGroupCreator)
-	handler := NewBankGroupHandler(mockGroupService, mockCreatorService)
+	mockUpdaterService := &dummyUpdaterService{}
+	handler := NewBankGroupHandler(mockGroupService, mockCreatorService, mockUpdaterService)
 
 	request := services.CreateBankGroupRequest{
 		GroupID: uuid.New().String(),

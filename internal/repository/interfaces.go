@@ -40,4 +40,5 @@ type BankGroupRepository interface {
 // BankGroupWriter defines the methods for creating and updating bank groups
 type BankGroupWriter interface {
 	CreateBankGroup(ctx context.Context, bankGroup *models.BankGroup) error
+	UpdateBankGroup(ctx context.Context, bankGroup *models.BankGroup) error
 }

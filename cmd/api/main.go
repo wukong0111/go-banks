@@ -100,7 +100,8 @@ func run() error {
 	bankGroupService := services.NewBankGroupService(bankGroupRepo)
 	bankGroupWriter := repository.NewPostgresBankGroupWriter(dbPool)
 	bankGroupCreatorService := services.NewBankGroupCreatorService(bankGroupWriter)
-	bankGroupHandler := handlers.NewBankGroupHandler(bankGroupService, bankGroupCreatorService)
+	bankGroupUpdaterService := services.NewBankGroupUpdaterService(bankGroupWriter, bankGroupRepo)
+	bankGroupHandler := handlers.NewBankGroupHandler(bankGroupService, bankGroupCreatorService, bankGroupUpdaterService)
 
 	// Initialize JWT service and auth middleware
 	jwtExpiry, err := time.ParseDuration(cfg.JWT.Expiry)
@@ -148,6 +149,9 @@ func run() error {
 	api.POST("/bank-groups",
 		authMiddleware.RequireAuth("banks:write"),
 		bankGroupHandler.CreateBankGroup)
+	api.PUT("/bank-groups/:groupId",
+		authMiddleware.RequireAuth("banks:write"),
+		bankGroupHandler.UpdateBankGroup)
 
 	// Create HTTP server with timeouts
 	srv := &http.Server{

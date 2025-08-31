@@ -1,339 +1,169 @@
-# CLAUDE.md
+## Visión General del Proyecto
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Proyecto Go para API de servicio bancario. Usa Gin para framework web, PostgreSQL como base de datos, JWT para autenticación. Contenerizado con Docker y gestionado por Makefile.
 
-## 🎯 Quick Start
+**Tecnologías Clave:**
+- Go: Lenguaje principal.
+- Gin: Framework para APIs.
+- PostgreSQL: Base de datos relacional.
+- Docker: Contenerización.
+- JWT: Seguridad con tokens.
+- golang-migrate: Migraciones de DB.
 
-**Get up and running fast:**
-```bash
-# Start development environment
-docker compose up -d     # Start PostgreSQL container
-make migrate-up          # Apply migrations
-make seed                # Load test data
-make dev                 # Start with live reload
+**Arquitectura:**
+- `cmd/`: Aplicaciones principales (API, migraciones, seeding).
+- `internal/`: Lógica de negocio (handlers, models, repositories, services).
+- `migrations/`: Archivos SQL de migraciones.
+- `seeders/`: Archivos SQL para datos iniciales.
 
-# Before any commit
-make lint               # Must show 0 issues
-make test               # All tests must pass
-make build              # Verify clean compilation
-```
+## Construcción y Ejecución
 
-**Most used commands:**
-- `make help` - See all available commands
-- `make db-reset` - Reset database completely
-- `make migrate-status` - Check migration status
+**Prerrequisitos:**
+- Go 1.25.0 (requerido para features modernas).
+- Docker y Docker Compose.
+- `make`.
 
-## 🏗️ Architecture Overview
+**Comandos Clave:**
+- `make dev`: Inicia entorno dev con live reload.
+- `make build`: Compila y crea binario en `bin/`.
+- `make run`: Ejecuta la app compilada.
+- `make test`: Ejecuta tests.
+- Migraciones: `make migrate-up` (aplicar), `make migrate-down` (revertir), `make migrate-status` (estado).
+- Seeding: `make seed`.
 
-**Go 1.25.0 Banking Service API** with PostgreSQL database. Uses pgx v5 for database connectivity and Gin for HTTP routing.
+## Convenciones de Desarrollo
 
-**Core Structure:**
-- `cmd/` - Entry points (api, migrate, seed, token)
-- `internal/` - Private application code
-  - `auth/` - JWT authentication service
-  - `config/` - Environment-based configuration
-  - `handlers/` - HTTP request handlers  
-  - `middleware/` - Auth and other middleware
-  - `models/` - Database models with pgx v5 types
-  - `repository/` - Data access layer
-  - `services/` - Business logic layer
-- `migrations/` - Database schema migrations
-- `seeders/` - SQL data seeding files
-- `docs/` - OpenAPI 3.0.3 specification
+### Estándares de Código
 
-**Database Architecture:**
-- PostgreSQL with JSONB for flexible data (bank_codes, keywords, attributes)
-- Environment-based configurations: sandbox, production, uat, test
-- Primary tables: bank_groups, banks, bank_environment_configs
+**Versión Requerida:** Go 1.25.0 - Usa features modernas:
+- Range over integers: `for i := range 10 { ... }`.
+- Inferencia de tipos mejorada.
+- Iteradores mejorados.
+- Sintaxis moderna: `any` en vez de `interface{}`.
+- Paquete slices: `slices.Contains()` en vez de loops manuales.
 
-## 💻 Development
+### Guías de Seguridad de Tipos
 
-### Environment Setup
+**Principio:** Maximiza seguridad de tipos con sintaxis moderna.
 
-**Prerequisites:**
-- Go 1.25.0
-- Docker & Docker Compose
-- PostgreSQL (via Docker)
+1. **Modernización de Sintaxis:**
+   - Usa `any` no `interface{}`.
 
-**Configuration:**
-```bash
-# Environment variables with defaults
-PORT=8080                                    # API server port
-DB_HOST=localhost, DB_PORT=5432             # Database connection
-DB_USER=postgres, DB_PASSWORD=password      # Database credentials  
-DB_NAME=bankdb                              # Database name
-JWT_SECRET=your-super-secret-jwt-key        # JWT signing secret
-JWT_EXPIRY=24h                              # Token expiration
-```
+2. **Optimización de Seguridad:**
+   - Prefiere interfaces específicas para polimorfismo.
+   - Usa `any` cuando necesario, con sintaxis moderna.
 
-### Development Workflow
+3. **Tipos Genéricos:**
+   - Para reusabilidad: `type APIResponse[T any] struct { ... }`.
+   - Alternativa: `any` con type switches.
 
-**Standard development cycle:**
-```bash
-# 1. Start services
-docker compose up -d && make migrate-up && make seed
+**Casos Aceptables para `any`:**
+- Unmarshaling JSON: `map[string]any`.
+- Campos JSONB en DB.
+- Interfaces de libs externas.
+- Contenedores genéricos con constraints.
 
-# 2. Develop with live reload
-make dev
+### Patrones de Código
 
-# 3. Before committing
-make lint    # Must show 0 issues
-make test    # All tests must pass  
-make build   # Verify compilation
+1. **Manejo de Errores:**
+   - Patrón run(): `func main() { if err := run(); err != nil { logger.Error("failed to run application", "error", err) } }`.
+   - Usa `defer` para cleanup.
 
-# 4. Database operations
-make migrate-up      # Apply new migrations
-make seed           # Load fresh test data
-make db-reset       # Complete reset when needed
-```
+2. **Operaciones con Slices:**
+   - Usa paquete slices.
+   - Range over integers.
 
-## 📝 Code Standards
+3. **Operaciones con Strings:**
+   - Concatenación simple.
+   - `errors.New` para mensajes estáticos.
+   - `fmt.Errorf` para formateo complejo.
 
-### Go 1.25.0 Modern Features
+4. **Patrones HTTP:**
+   - `http.NoBody` para requests vacíos.
+   - Manejo de errores con switch en strings.
 
-**Required version:** Go 1.25.0 - Use latest language features:
-- **Range over integers**: `for i := range 10 { ... }` instead of `for i := 0; i < 10; i++`
-- **Enhanced type inference**: Better generic type deduction
-- **Improved iterators**: Use new iteration patterns when applicable
-- **Modern syntax**: `any` instead of `interface{}` (Go 1.18+)
-- **Slices package**: `slices.Contains()` over manual loops (Go 1.21+)
+### Estándares de Testing
 
-### Type Safety Guidelines
+**Framework:** testify.
+- `require` para assertions críticas.
+- `assert` para checks de valores.
+- `mock` para mocking.
 
-**Core principle: Maximize type safety while using modern Go syntax**
+**Convención de Nombres:**
+- Funciones de test: `TestTypeMethodScenario` (sin underscores para evitar warnings del linter)
+- Ejemplos: `TestBankGroupHandlerUpdateBankGroupSuccess`, `TestServiceCreateBankValidation`
+- Evitar: `TestBankGroupHandler_UpdateBankGroup_Success` (genera warnings de revive)
 
-1. **Syntax modernization** (always do this):
-   ```go
-   // ✅ Modern Go syntax
-   func process(data any) error           // Use 'any' not 'interface{}'
-   
-   // ❌ Deprecated syntax  
-   func process(data interface{}) error   // Don't use 'interface{}'
-   ```
+### Configuración de Linter
 
-2. **Type safety optimization** (prefer when possible):
-   ```go
-   // ✅ Preferred: Specific interfaces for polymorphism
-   type BankDetails interface {
-       GetBank() *Bank
-       GetType() BankDetailsType
-   }
-   func GetBankDetails(...) (BankDetails, error)
-   
-   // ✅ Acceptable: 'any' with modern syntax when needed
-   func GetBankDetails(...) (any, error)
-   
-   // ❌ Avoid: Old interface{} syntax
-   func GetBankDetails(...) (interface{}, error)
-   ```
+**golangci-lint** con estándares estrictos - 0 issues tolerados.
 
-3. **Generic types for reusability**:
-   ```go
-   // ✅ Preferred: Type-safe generics
-   type APIResponse[T any] struct {
-       Success bool `json:"success"`
-       Data    T    `json:"data,omitempty"`
-       Error   *string `json:"error,omitempty"`
-   }
-   
-   // ✅ Acceptable: any with type switches
-   func handleResponse(data any) error {
-       switch v := data.(type) {
-       case string: return handleString(v)
-       case int: return handleInt(v)
-       default: return fmt.Errorf("unsupported type: %T", v)
-       }
-   }
-   ```
+**Linters Habilitados:**
+- gosec, gocritic, staticcheck, revive, perfsprint, prealloc, ineffassign, unused, misspell.
 
-**When `any` is perfectly acceptable:**
-- JSON unmarshaling: `map[string]any`
-- Database JSONB fields: `map[string]any` 
-- Third-party library interfaces requiring it
-- Generic containers with proper type constraints
+**Ejecución:**
+- `make lint`, `make test`, `make build` deben pasar limpios.
 
-### Code Patterns
+**Política Crítica:**
+- Nunca suprime warnings editando config o excluyendo archivos.
+- Siempre fija el código subyacente.
+- Cambios aceptables: Ajustes de thresholds legítimos, nuevos linters.
 
-1. **Error Handling Pattern**:
-   ```go
-   // ✅ Use run() pattern for main functions
-   func main() {
-       if err := run(); err != nil {
-           log.Fatal(err)  // Only one exit point
-       }
-   }
-   
-   func run() error {
-       defer cleanup()  // Guaranteed execution
-       return fmt.Errorf("descriptive error: %w", err)
-   }
-   ```
+## Conocimiento de Dominio
 
-2. **Slice Operations**:
-   ```go
-   // ✅ Use slices package (Go 1.21+)
-   return slices.Contains(validEnvs, env)
-   return slices.ContainsFunc(items, predicate)
-   
-   // ✅ Range over integers (Go 1.23+)  
-   for i := range 10 {
-       process(items[i])
-   }
-   ```
+### Conceptos Bancarios
 
-3. **String Operations**:
-   ```go
-   // ✅ Simple concatenation
-   query := "SELECT * FROM " + table
-   
-   // ✅ Static error messages
-   return errors.New("bank not found")
-   
-   // ✅ Complex formatting only when needed
-   return fmt.Errorf("failed to process bank %s: %w", bankID, err)
-   ```
+**Entornos:**
+- `sandbox`: Dev/testing.
+- `production`: Operaciones live.
+- `uat`: Testing de aceptación.
+- `test`: Testing automatizado.
 
-4. **HTTP Patterns**:
-   ```go
-   // ✅ Use http.NoBody for empty requests
-   req, _ := http.NewRequest("GET", url, http.NoBody)
-   
-   // ✅ Proper error handling
-   switch {
-   case strings.Contains(err, "not found"):
-       return NotFoundError
-   case strings.Contains(err, "invalid"):
-       return ValidationError
-   }
-   ```
+**Modelos Core:**
+- `Bank`: Institución con país, tipo API, entornos.
+- `BankGroup`: Grupo de bancos relacionados.
+- `BankEnvironmentConfig`: Config por entorno.
+- `BankDetails`: Interfaz polimórfica (single/multiple entornos).
 
-### Testing Standards
+**Patrones de Datos:**
+- Campos JSONB: `map[string]any`.
+- Arrays: `pgtype.Array[string]`.
+- Respuestas: `APIResponse[T any]`.
 
-**Framework:** testify (consistent across all tests)
-```go
-import (
-    "github.com/stretchr/testify/assert"
-    "github.com/stretchr/testify/mock"
-    "github.com/stretchr/testify/require"
-)
+## Principios de Diseño API
 
-// ✅ Use require for critical assertions
-require.NoError(t, err)
-require.NotNil(t, result)
+**Especificación:** OpenAPI 3.0.3 en `docs/api-documentation.yml`.
 
-// ✅ Use assert for value checks
-assert.Equal(t, expected, actual)
-assert.Contains(t, slice, item)
+**Autenticación:** JWT requerido (excepto health checks).
+- Permisos: `banks:read/write`.
+- Validación via middleware.
+- Claims: subject, permissions array.
 
-// ✅ Use testify/mock for mocking
-type MockRepository struct {
-    mock.Mock
-}
-```
+**Patrones de Respuesta:**
+- Wrapper `APIResponse[T]`.
+- Códigos HTTP apropiados.
+- Errores estructurados.
+- Paginación en listas.
 
-## 🔧 Tools & Configuration
+## Notas Importantes
 
-### Linter Configuration
+**Workflows Críticos:**
+- Siempre migraciones antes de seeding: `make migrate-up && make seed`.
+- Nunca commit con issues: `make lint` debe mostrar 0 issues, `make test` pasar.
+- Test antes de commit.
 
-**golangci-lint** with strict quality standards - **0 issues tolerated**
+**Específicos de Entorno:**
+- Usa `docker compose` (no `docker-compose`).
+- PostgreSQL via container Docker.
+- Go 1.25.0 requerido para features modernas.
 
-**Enabled linters:**
-- `gosec` - Security vulnerability detection
-- `gocritic` - Performance and style improvements  
-- `staticcheck` - Advanced static analysis
-- `revive` - Comprehensive Go linting
-- `perfsprint` - String formatting optimizations
-- `prealloc` - Slice pre-allocation suggestions
-- `ineffassign` - Ineffectual assignment detection
-- `unused` - Dead code elimination
-- `misspell` - Spelling corrections
+**Operaciones DB:**
+- Migraciones versionadas (001-004).
+- Seeds dependen de migraciones actuales.
+- `make db-reset` para reset dev.
 
-**Quality enforcement:**
-```bash
-make lint    # Must return "0 issues"
-make test    # All tests must pass
-make build   # Clean compilation required
-```
-
-**⚠️ CRITICAL LINTER POLICY:**
-- **NEVER modify `.golangci.yml` to suppress warnings by exclusion**
-- **NEVER add file exclusions or disable linters to silence issues**
-- **ALWAYS fix the underlying code issue causing the warning**
-- **Only acceptable config changes:**
-  - Adjusting thresholds for legitimate edge cases (e.g., slog.Record size)
-  - Enabling new linters to improve code quality
-  - Adding comments to document why specific thresholds are needed
-
-**Rationale:** Suppressing linter warnings hides real issues and degrades code quality over time. Every warning should be addressed by improving the code, not by silencing the tool.
-
-## 📚 Domain Knowledge
-
-### Banking Domain Concepts
-
-**Environments:** 
-- `sandbox` - Development/testing environment
-- `production` - Live banking operations  
-- `uat` - User acceptance testing
-- `test` - Automated testing environment
-
-**Core Models:**
-- `Bank` - Financial institution with country, API type, environments
-- `BankGroup` - Collection of related banks
-- `BankEnvironmentConfig` - Environment-specific bank configuration
-- `BankDetails` - Polymorphic response interface (single vs multiple environments)
-
-**Data Patterns:**
-```go
-// JSONB fields for flexible data
-type Bank struct {
-    BankCodes   map[string]any `json:"bank_codes,omitempty"`
-    Keywords    pgtype.Array[string] `json:"keywords"`
-    Attributes  map[string]any `json:"attributes,omitempty"`
-}
-
-// Generic API responses
-type APIResponse[T any] struct {
-    Success    bool               `json:"success"`
-    Data       T                  `json:"data,omitempty"`
-    Error      *string            `json:"error,omitempty"`
-    Pagination *Pagination        `json:"pagination,omitempty"`
-}
-```
-
-### API Design Principles
-
-**OpenAPI 3.0.3 Specification:** All endpoints documented in `docs/api-documentation.yml`
-
-**Authentication:** JWT required for all endpoints except health checks
-- Permissions: `banks:read`, `banks:write`
-- Token validation via middleware
-- Claims include subject and permissions array
-
-**Response Patterns:**
-- Consistent `APIResponse[T]` wrapper
-- Proper HTTP status codes
-- Structured error messages
-- Pagination for list endpoints
-
-## ⚠️ Important Notes
-
-**Critical workflows:**
-- **Always** run migrations before seeding: `make migrate-up && make seed`
-- **Never** commit with linter issues: `make lint` must show `0 issues`
-- **Always** test before committing: `make test` must pass
-
-**Environment specifics:**
-- Use `docker compose` not `docker-compose` (modern Docker syntax)
-- PostgreSQL via Docker container (not local installation)
-- Go 1.25.0 required - leverage modern language features
-
-**Database operations:**
-- Migrations are versioned and sequential (001, 002, 003, 004)
-- Seeds depend on migrations being current
-- Use `make db-reset` for clean slate during development
-
-**Server Operations:**
-- **Graceful shutdown**: Server handles SIGTERM/SIGINT properly for zero-downtime deployments
-- **Health checks**: `/health` for liveness probe, `/ready` for readiness probe with DB connectivity check
-- **Timeouts configured**: 15s read/write, 60s idle, 30s graceful shutdown
-- **Production ready**: Compatible with Kubernetes, Docker Swarm, and other container orchestrators
+**Operaciones Server:**
+- Shutdown graceful: Maneja SIGTERM/SIGINT.
+- Health checks: `/health` (liveness), `/ready` (readiness con check DB).
+- Timeouts: 15s read/write, 60s idle, 30s shutdown.
+- Listo para producción: Compatible con Kubernetes, Docker Swarm.
