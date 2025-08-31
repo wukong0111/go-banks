@@ -56,7 +56,7 @@ func TestJWTEnvProviderGetSecretWithWhitespace(t *testing.T) {
 	assert.Equal(t, "test-secret-with-spaces", secret)
 }
 
-func TestJWTEnvProviderGetSecretUsesDefault(t *testing.T) {
+func TestJWTEnvProviderGetSecretMissingEnvVar(t *testing.T) {
 	// Setup
 	provider := NewJWTEnvProvider()
 
@@ -76,16 +76,14 @@ func TestJWTEnvProviderGetSecretUsesDefault(t *testing.T) {
 	secret, err := provider.GetSecret()
 
 	// Assert
-	require.NoError(t, err)
-	assert.Equal(t, "your-super-secret-jwt-key", secret) // Default value
+	assert.Error(t, err)
+	assert.Empty(t, secret)
+	assert.Contains(t, err.Error(), "JWT_SECRET environment variable not set")
 }
 
 func TestJWTEnvProviderGetSecretEmptyValueError(t *testing.T) {
-	// Setup - create provider with empty default for this test
-	provider := &JWTEnvProvider{
-		envVar:       "JWT_SECRET",
-		defaultValue: "",
-	}
+	// Setup
+	provider := NewJWTEnvProvider()
 
 	// Set empty environment variable
 	originalValue := os.Getenv("JWT_SECRET")
@@ -105,15 +103,12 @@ func TestJWTEnvProviderGetSecretEmptyValueError(t *testing.T) {
 	// Assert
 	assert.Error(t, err)
 	assert.Empty(t, secret)
-	assert.Contains(t, err.Error(), "JWT secret cannot be empty")
+	assert.Contains(t, err.Error(), "JWT_SECRET environment variable not set")
 }
 
 func TestJWTEnvProviderGetSecretWhitespaceOnlyError(t *testing.T) {
-	// Setup - create provider with empty default for this test
-	provider := &JWTEnvProvider{
-		envVar:       "JWT_SECRET",
-		defaultValue: "",
-	}
+	// Setup
+	provider := NewJWTEnvProvider()
 
 	// Set whitespace-only environment variable
 	originalValue := os.Getenv("JWT_SECRET")
@@ -133,5 +128,5 @@ func TestJWTEnvProviderGetSecretWhitespaceOnlyError(t *testing.T) {
 	// Assert
 	assert.Error(t, err)
 	assert.Empty(t, secret)
-	assert.Contains(t, err.Error(), "JWT secret cannot be empty")
+	assert.Contains(t, err.Error(), "JWT_SECRET environment variable not set")
 }
