@@ -278,8 +278,7 @@ func BenchmarkMultiLogger(b *testing.B) {
 	handler2 := &discardHandler{}
 	logger := NewMultiLogger(handler1, handler2)
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for i := 0; b.Loop(); i++ {
 		logger.Info("benchmark message", "iteration", i)
 	}
 }
@@ -289,8 +288,7 @@ func BenchmarkSingleLogger(b *testing.B) {
 	handler := &discardHandler{}
 	logger := NewMultiLogger(handler)
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for i := 0; b.Loop(); i++ {
 		logger.Info("benchmark message", "iteration", i)
 	}
 }

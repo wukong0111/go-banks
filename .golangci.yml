@@ -18,6 +18,7 @@ linters:
     - unused
     - prealloc
     - staticcheck
+    - intrange  # Detects for loops that can use range over int
   settings:
     gocritic:
       enabled-tags:

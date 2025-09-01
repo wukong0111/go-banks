@@ -132,7 +132,7 @@ func TestFileSecretProvider_MaxDeprecatedSecrets(t *testing.T) {
 	defer func() { _ = provider.Close() }()
 
 	// Perform multiple rotations
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		_, err := provider.handleRotateCommand()
 		require.NoError(t, err)
 	}
@@ -158,11 +158,11 @@ func TestFileSecretProvider_ConcurrentAccess(t *testing.T) {
 	errors := make(chan error, 10)
 
 	// Concurrent reads
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for j := 0; j < 10; j++ {
+			for range 10 {
 				_, err := provider.GetSecret()
 				if err != nil {
 					errors <- err
@@ -173,7 +173,7 @@ func TestFileSecretProvider_ConcurrentAccess(t *testing.T) {
 	}
 
 	// Concurrent rotations
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

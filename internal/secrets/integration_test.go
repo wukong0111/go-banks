@@ -88,7 +88,7 @@ func TestFullRotationFlow(t *testing.T) {
 	fmt.Printf("Deprecated secrets count: %d\n", len(deprecated))
 
 	// Step 8: Perform multiple rotations to test limit enforcement
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		// Send another rotation command
 		_, err = conn.Write(append(cmdBytes, '\n'))
 		require.NoError(t, err)
@@ -135,7 +135,7 @@ func TestMultipleClientsRotation(t *testing.T) {
 	responses := make(chan RotationResponse, numClients)
 	errors := make(chan error, numClients)
 
-	for i := 0; i < numClients; i++ {
+	for i := range numClients {
 		go func(clientID int) {
 			conn, err := net.Dial("tcp", serverAddr)
 			if err != nil {
@@ -177,7 +177,7 @@ func TestMultipleClientsRotation(t *testing.T) {
 
 	// Collect responses
 	successCount := 0
-	for i := 0; i < numClients; i++ {
+	for range numClients {
 		select {
 		case response := <-responses:
 			if response.Success {

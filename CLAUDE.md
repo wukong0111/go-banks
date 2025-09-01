@@ -72,7 +72,7 @@ Proyecto Go para API de servicio bancario. Usa Gin para framework web, PostgreSQ
 
 2. **Operaciones con Slices:**
    - Usa paquete slices.
-   - Range over integers.
+   - Range over integers: `for i := range 10 { ... }` (Go 1.22+).
 
 3. **Operaciones con Strings:**
    - Concatenación simple.
@@ -90,6 +90,11 @@ Proyecto Go para API de servicio bancario. Usa Gin para framework web, PostgreSQ
 - `assert` para checks de valores.
 - `mock` para mocking.
 
+**Benchmarks Modernos (Go 1.21+):**
+- Usa `for i := 0; b.Loop(); i++` en vez de `for i := 0; i < b.N; i++`.
+- `b.Loop()` maneja timer automáticamente (no necesita `b.ResetTimer()`).
+- Elimina warnings de intrange linter.
+
 **Convención de Nombres:**
 - **Archivos Go (no tests)**: Nombres simples en minúsculas, sin underscores ni camelCase
   - ✅ Correcto: `secretprovider.go`, `jwtprovider.go`, `tcpserver.go`
@@ -103,7 +108,8 @@ Proyecto Go para API de servicio bancario. Usa Gin para framework web, PostgreSQ
 **golangci-lint** con estándares estrictos - 0 issues tolerados.
 
 **Linters Habilitados:**
-- gosec, gocritic, staticcheck, revive, perfsprint, prealloc, ineffassign, unused, misspell.
+- gosec, gocritic, staticcheck, revive, perfsprint, prealloc, ineffassign, unused, misspell, intrange.
+- **intrange**: Detecta loops que pueden modernizarse con `range over int` (Go 1.22+).
 
 **Ejecución:**
 - `make lint`, `make test`, `make build` deben pasar limpios.

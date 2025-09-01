@@ -46,7 +46,7 @@ func TestGenerateSecureSecret_Uniqueness(t *testing.T) {
 	secrets := make(map[string]bool)
 
 	// Generate 100 secrets and ensure they're all unique
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		secret, err := GenerateSecureSecret(32)
 		require.NoError(t, err)
 
